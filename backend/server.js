@@ -34,5 +34,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Access via:`);
   console.log(`- Local: http://localhost:${PORT}`);
-  console.log(`- Network: http://YOUR_BACKEND_IP:${PORT}`);
+  console.log(`- Network: http://26.178.21.116:${PORT}`);
 });
