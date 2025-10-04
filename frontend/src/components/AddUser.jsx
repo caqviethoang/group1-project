@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-// Config - THAY ĐỔI IP NÀY THÀNH IP BACKEND CỦA BẠN
 const API_BASE_URL = 'http://192.168.1.38:3000';
 
 const AddUser = ({ onUserAdded }) => {
@@ -12,13 +11,45 @@ const AddUser = ({ onUserAdded }) => {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState(''); // 'success' | 'error'
+  const [messageType, setMessageType] = useState('');
+  const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Validate name
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name không được để trống';
+    } else if (formData.name.trim().length > 50) {
+      newErrors.name = 'Name không được vượt quá 50 ký tự';
+    }
+
+    // Validate email
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email không được để trống';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email không hợp lệ';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ''
+      });
+    }
+
     // Clear message when user starts typing
     if (message) {
       setMessage('');
@@ -29,9 +60,7 @@ const AddUser = ({ onUserAdded }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.name.trim() || !formData.email.trim()) {
-      setMessage('Vui lòng điền đầy đủ thông tin');
-      setMessageType('error');
+    if (!validateForm()) {
       return;
     }
 
@@ -49,6 +78,7 @@ const AddUser = ({ onUserAdded }) => {
       setMessage('✅ Thêm user thành công!');
       setMessageType('success');
       setFormData({ name: '', email: '' });
+      setErrors({});
       
       // Notify parent component to refresh list
       if (onUserAdded) {
@@ -77,7 +107,6 @@ const AddUser = ({ onUserAdded }) => {
       } else if (error.code === 'NETWORK_ERROR') {
         errorMessage = '❌ Không thể kết nối đến server';
       }
-      
       setMessage(errorMessage);
       setMessageType('error');
     } finally {
@@ -114,11 +143,16 @@ const AddUser = ({ onUserAdded }) => {
             style={{
               width: '100%',
               padding: '10px',
-              border: '1px solid #ddd',
+              border: `1px solid ${errors.name ? '#dc3545' : '#ddd'}`,
               borderRadius: '4px',
               fontSize: '1rem'
             }}
           />
+          {errors.name && (
+            <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '5px' }}>
+              ⚠️ {errors.name}
+            </div>
+          )}
         </div>
 
         <div style={{ marginBottom: '20px' }}>
@@ -136,11 +170,16 @@ const AddUser = ({ onUserAdded }) => {
             style={{
               width: '100%',
               padding: '10px',
-              border: '1px solid #ddd',
+              border: `1px solid ${errors.email ? '#dc3545' : '#ddd'}`,
               borderRadius: '4px',
               fontSize: '1rem'
             }}
           />
+          {errors.email && (
+            <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '5px' }}>
+              ⚠️ {errors.email}
+            </div>
+          )}
         </div>
 
         <button 
@@ -203,16 +242,15 @@ const AddUser = ({ onUserAdded }) => {
       </form>
 
       <div style={{
-
-      marginTop: '25px',
+        marginTop: '25px',
         padding: '15px',
         background: '#f8f9fa',
         borderRadius: '6px',
         borderLeft: '4px solid #667eea'
       }}>
-        <h4 style={{ marginBottom: '8px', color: '#333' }}>📋 Thông tin:</h4>
+        <h4 style={{ marginBottom: '8px', color: '#333' }}>📋 Validation Rules:</h4>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          <li style={{ padding: '4px 0', color: '#666' }}>• Tên: Tối đa 50 ký tự</li>
+          <li style={{ padding: '4px 0', color: '#666' }}>• Tên: Không được trống, tối đa 50 ký tự</li>
           <li style={{ padding: '4px 0', color: '#666' }}>• Email: Định dạng email hợp lệ</li>
           <li style={{ padding: '4px 0', color: '#666' }}>• Email phải là duy nhất trong hệ thống</li>
         </ul>
