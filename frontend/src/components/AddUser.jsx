@@ -1,4 +1,4 @@
-// frontend/src/components/AddUser.jsx
+// src/components/AddUser.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
 
@@ -18,102 +18,121 @@ const AddUser = ({ onUserAdded }) => {
     });
   };
 
-  // POST API - Thêm user mới
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form - Backend yêu cầu name, email, age
     if (!formData.name || !formData.email || !formData.age) {
-      setMessage('Vui lòng điền đầy đủ thông tin: name, email, age');
+      setMessage('Vui lòng điền đầy đủ thông tin');
       return;
     }
 
-    try {
-      setLoading(true);
-      setMessage('');
+    setLoading(true);
+    setMessage('');
 
-      // Tạo object user mới theo cấu trúc backend
+    try {
       const newUser = {
         name: formData.name,
         email: formData.email,
-        age: formData.age
+        age: parseInt(formData.age)
       };
 
-      // Gửi POST request
-      const response = await axios.post("http://localhost:3000/users", newUser);
+      // SỬA: Dùng relative URL
+      const response = await axios.post("/users", newUser);
       
-      // Kiểm tra response từ backend
-      if (response.data.success) {
-        setMessage('✅ Thêm user thành công!');
-        setFormData({ name: '', email: '', age: '' }); // Reset form
-        
-        // Gọi callback để refresh danh sách
-        if (onUserAdded) {
-          onUserAdded();
-        }
-      } else {
-        setMessage(`❌ ${response.data.message}`);
+      setMessage('Thêm user thành công!');
+      setFormData({ name: '', email: '', age: '' });
+      
+      if (onUserAdded) {
+        onUserAdded();
       }
-    } catch (err) {
-      // Xử lý lỗi từ server
-      if (err.response && err.response.data) {
-        setMessage(`❌ ${err.response.data.message}`);
+    } catch (error) {
+      console.error('Error adding user:', error);
+      if (error.response && error.response.data) {
+        setMessage(`Lỗi: ${error.response.data.message || 'Lỗi khi thêm user'}`);
       } else {
-        setMessage('❌ Lỗi kết nối đến server');
+        setMessage('Lỗi khi thêm user');
       }
-      console.error('Error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ marginBottom: '20px', padding: '20px', border: '1px solid #ccc' }}>
+    <div style={{ 
+      margin: '20px', 
+      padding: '20px', 
+      border: '1px solid #ddd', 
+      borderRadius: '8px' 
+    }}>
       <h2>Thêm User Mới</h2>
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Name:</label>
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px' }}>
+            Name:
+          </label>
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleChange}
             required
-            style={{ width: '200px', padding: '5px' }}
             placeholder="Nhập tên"
+            style={{ 
+              width: '100%', 
+              padding: '8px', 
+              border: '1px solid #ddd',
+              borderRadius: '4px'
+            }}
           />
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Email:</label>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px' }}>
+            Email:
+          </label>
           <input
             type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
             required
-            style={{ width: '200px', padding: '5px' }}
             placeholder="Nhập email"
+            style={{ 
+              width: '100%', 
+              padding: '8px', 
+              border: '1px solid #ddd',
+              borderRadius: '4px'
+            }}
           />
         </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Age:</label>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px' }}>
+            Age:
+          </label>
           <input
             type="number"
             name="age"
             value={formData.age}
             onChange={handleChange}
             required
-            style={{ width: '200px', padding: '5px' }}
             placeholder="Nhập tuổi"
+            style={{ 
+              width: '100%', 
+              padding: '8px', 
+              border: '1px solid #ddd',
+              borderRadius: '4px'
+            }}
           />
         </div>
+
         <button 
           type="submit" 
           disabled={loading}
-          style={{ 
-            padding: '8px 16px', 
+          style={{
             backgroundColor: loading ? '#ccc' : '#007bff',
             color: 'white',
+            padding: '10px 15px',
             border: 'none',
             borderRadius: '4px',
             cursor: loading ? 'not-allowed' : 'pointer'
@@ -121,15 +140,19 @@ const AddUser = ({ onUserAdded }) => {
         >
           {loading ? 'Đang thêm...' : 'Thêm User'}
         </button>
+
+        {message && (
+          <div style={{
+            marginTop: '10px',
+            padding: '10px',
+            backgroundColor: message.includes('thành công') ? '#d4edda' : '#f8d7da',
+            color: message.includes('thành công') ? '#155724' : '#721c24',
+            borderRadius: '4px'
+          }}>
+            {message}
+          </div>
+        )}
       </form>
-      {message && (
-        <p style={{ 
-          color: message.includes('✅') ? 'green' : 'red',
-          marginTop: '10px'
-        }}>
-          {message}
-        </p>
-      )}
     </div>
   );
 };
