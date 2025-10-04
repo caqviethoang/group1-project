@@ -18,7 +18,8 @@ function App() {
         color: 'white',
         textAlign: 'center'
       }}>
-        <h1>Quản lý Users</h1>
+        <h1>Quản lý Users - Group1 Project</h1>
+        <p>Kết nối MongoDB Atlas</p>
       </header>
       
       <main>
