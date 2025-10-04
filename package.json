@@ -1,7 +1,10 @@
 {
+  "name": "group1-project",
   "dependencies": {
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "mongodb": "^6.20.0",
+    "mongoose": "^8.0.0"
   }
 }
