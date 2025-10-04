@@ -1,76 +1,151 @@
-// Mảng tạm users (thay thế bằng database sau này)
-let users = [
-  { id: 1, name: 'Nguyễn Văn A', email: 'a@example.com', age: 25 },
-  { id: 2, name: 'Trần Thị B', email: 'b@example.com', age: 30 },
-  { id: 3, name: 'Lê Văn C', email: 'c@example.com', age: 22 }
-];
+const User = require('../models/User');
 
-let nextId = 4; // ID tiếp theo cho user mới
-
-const userController = {
-  // GET /users - Lấy danh sách tất cả users
-  getAllUsers: (req, res) => {
+// GET /users - Lấy danh sách tất cả users
+const getAllUsers = async (req, res) => {
     try {
-      res.json({
-        success: true,
-        message: 'Lấy danh sách users thành công',
-        data: users
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Lỗi server',
-        error: error.message
-      });
-    }
-  },
-
-  // POST /users - Tạo user mới
-  createUser: (req, res) => {
-    try {
-      const { name, email, age } = req.body;
-
-      // Kiểm tra dữ liệu đầu vào
-      if (!name || !email || !age) {
-        return res.status(400).json({
-          success: false,
-          message: 'Vui lòng cung cấp đầy đủ thông tin: name, email, age'
+        const users = await User.find().sort({ createdAt: -1 });
+        res.json({
+            success: true,
+            count: users.length,
+            data: users
         });
-      }
-
-      // Kiểm tra email đã tồn tại chưa
-      const existingUser = users.find(user => user.email === email);
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email đã tồn tại trong hệ thống'
-        });
-      }
-
-      // Tạo user mới
-      const newUser = {
-        id: nextId++,
-        name,
-        email,
-        age: parseInt(age)
-      };
-
-      users.push(newUser);
-
-      res.status(201).json({
-        success: true,
-        message: 'Tạo user thành công',
-        data: newUser
-      });
-
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Lỗi server',
-        error: error.message
-      });
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+            error: error.message
+        });
     }
-  }
 };
 
-module.exports = userController;
+// POST /users - Tạo user mới
+const createUser = async (req, res) => {
+    try {
+        const { name, email } = req.body;
+
+        // Kiểm tra user đã tồn tại chưa
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: 'User with this email already exists'
+            });
+        }
+
+        const user = new User({
+            name,
+            email
+        });
+
+        const savedUser = await user.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'User created successfully',
+            data: savedUser
+        });
+    } catch (error) {
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation Error',
+                error: error.message
+            });
+        }
+        
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+            error: error.message
+        });
+    }
+};
+
+// Thêm các function khác nếu cần
+const getUserById = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+            error: error.message
+        });
+    }
+};
+
+const updateUser = async (req, res) => {
+    try {
+        const { name, email } = req.body;
+
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { name, email },
+            { new: true, runValidators: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'User updated successfully',
+            data: user
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+            error: error.message
+        });
+    }
+};
+
+const deleteUser = async (req, res) => {
+    try {
+        const user = await User.findByIdAndDelete(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'User deleted successfully',
+            data: user
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+            error: error.message
+        });
+    }
+};
+
+module.exports = {
+    getAllUsers,
+    createUser,
+    getUserById,
+    updateUser,
+    deleteUser
+};
