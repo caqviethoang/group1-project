@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.1.38:3000';
+const API_BASE_URL = 'http://192.168.1.23:3000';
 
 const UserList = () => {
   const [users, setUsers] = useState([]);
