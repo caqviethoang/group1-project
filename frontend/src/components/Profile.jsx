@@ -1,10 +1,8 @@
 // src/components/Profile.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../service/auth'; // THAY ĐỔI: Dùng service thay vì axios
 
-const API_BASE_URL = 'http://192.168.1.23:3000';
-
-const Profile = () => {
+const Profile = ({ onProfileUpdate }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -25,13 +23,14 @@ const Profile = () => {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/auth/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      setLoading(true);
+      console.log('🔄 Fetching profile...');
 
+      // THAY ĐỔI: Dùng api service thay vì axios
+      const response = await api.get('/auth/profile');
+      
+      console.log('✅ Profile fetched successfully');
+      
       if (response.data.success) {
         setUser(response.data.user);
         setFormData({
@@ -43,7 +42,7 @@ const Profile = () => {
         });
       }
     } catch (error) {
-      console.error('Fetch profile error:', error);
+      console.error('❌ Fetch profile error:', error);
       showMessage('❌ Lỗi khi tải thông tin profile', 'error');
     } finally {
       setLoading(false);
@@ -109,7 +108,6 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
       const updateData = {
         name: formData.name,
         email: formData.email
@@ -121,16 +119,20 @@ const Profile = () => {
         updateData.newPassword = formData.newPassword;
       }
 
-      const response = await axios.put(`${API_BASE_URL}/auth/profile`, updateData, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      console.log('🔄 Updating profile...');
+
+      // THAY ĐỔI: Dùng api service thay vì axios
+      const response = await api.put('/auth/profile', updateData);
 
       if (response.data.success) {
         setUser(response.data.user);
         setEditing(false);
         showMessage('✅ Cập nhật profile thành công!', 'success');
+        
+        // Gọi callback để cập nhật user trong App.js
+        if (onProfileUpdate) {
+          onProfileUpdate(response.data.user);
+        }
         
         // Clear password fields
         setFormData({
@@ -139,9 +141,11 @@ const Profile = () => {
           newPassword: '',
           confirmPassword: ''
         });
+        
+        console.log('✅ Profile updated successfully');
       }
     } catch (error) {
-      console.error('Update profile error:', error);
+      console.error('❌ Update profile error:', error);
       const errorMessage = error.response?.data?.message || 'Lỗi khi cập nhật profile';
       showMessage(`❌ ${errorMessage}`, 'error');
     } finally {
@@ -170,7 +174,7 @@ const Profile = () => {
     setErrors({});
   };
 
-  if (loading) {
+  if (loading && !user) {
     return (
       <div style={{ 
         margin: '20px', 
@@ -225,7 +229,7 @@ const Profile = () => {
               cursor: 'pointer',
               fontSize: '0.9rem'
             }}
-            >
+          >
             ✏️ Chỉnh sửa
           </button>
         )}
@@ -297,7 +301,6 @@ const Profile = () => {
               </div>
             )}
           </div>
-
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>
               📧 Email:
@@ -468,7 +471,7 @@ const Profile = () => {
                     marginRight: '8px'
                   }}></div>
                   Đang lưu...
-                  </>
+                </>
               ) : (
                 '💾 Lưu thay đổi'
               )}

@@ -1,8 +1,8 @@
 // src/components/UserList.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../service/auth'; // Dùng service thay vì axios
 
-const API_BASE_URL = 'http://192.168.1.23:3000';
+const API_BASE_URL = 'http://192.168.1.58:3000';
 
 const UserList = () => {
   const [users, setUsers] = useState([]);
@@ -12,58 +12,72 @@ const UserList = () => {
   const [editMode, setEditMode] = useState(false);
   const [operationLoading, setOperationLoading] = useState(false);
 
-  // Sử dụng useCallback để tránh re-render không cần thiết
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/users`);
+      console.log('🔄 Fetching users...');
+      
+      // Dùng api service thay vì axios
+      const response = await api.get('/users');
+      
+      console.log('✅ Users fetched successfully');
       setUsers(response.data.data);
       setError('');
     } catch (err) {
-      console.error('Error fetching users:', err);
+      console.error('❌ Error fetching users:', err);
       setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
+   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+  }, [fetchUsers])
 
-  const handleDeleteUser = async (userId) => {
+   const handleDeleteUser = async (userId) => {
     if (window.confirm('Bạn có chắc muốn xóa user này?')) {
       try {
         setOperationLoading(true);
-        await axios.delete(`${API_BASE_URL}/users/${userId}`);
+        console.log('🗑️ Deleting user:', userId);
+        
+        // Dùng api service
+        await api.delete(`/users/${userId}`);
+        
+        console.log('✅ User deleted successfully');
         await fetchUsers(); // Refresh list after delete
       } catch (err) {
+        console.error('❌ Error deleting user:', err);
         setError('Lỗi khi xóa user');
-        console.error('Error deleting user:', err);
       } finally {
         setOperationLoading(false);
       }
     }
   };
 
-  const handleEditUser = (user) => {
+   const handleEditUser = (user) => {
     setSelectedUser(user);
     setEditMode(true);
-  };
+  }
 
-  const handleUpdateUser = async (updatedUser) => {
+   const handleUpdateUser = async (updatedUser) => {
     try {
       setOperationLoading(true);
-      await axios.put(`${API_BASE_URL}/users/${updatedUser._id}`, {
+      console.log('✏️ Updating user:', updatedUser._id);
+      
+      // Dùng api service
+      await api.put(`/users/${updatedUser._id}`, {
         name: updatedUser.name,
         email: updatedUser.email
       });
+
+      console.log('✅ User updated successfully');
       setEditMode(false);
       setSelectedUser(null);
       await fetchUsers(); // Refresh list after update
     } catch (err) {
+      console.error('❌ Error updating user:', err);
       setError('Lỗi khi cập nhật user');
-      console.error('Error updating user:', err);
     } finally {
       setOperationLoading(false);
     }
