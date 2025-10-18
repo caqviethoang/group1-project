@@ -21,7 +21,17 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret-key');
+    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
+    const decoded = jwt.verify(token, jwtSecret);
+    
+    // Kiểm tra token type
+    if (decoded.type !== 'access') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token type'
+      });
+    }
+
     const user = await User.findById(decoded.userId);
     
     if (!user) {
@@ -38,12 +48,34 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
+    // Kiểm tra token bị revoke (nếu user logout all)
+    if (user.lastLogoutAt && decoded.iat * 1000 < user.lastLogoutAt.getTime()) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token has been revoked'
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Access token đã hết hạn'
+      });
+    }
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
+    }
+
     res.status(401).json({
       success: false,
-      message: 'Invalid token'
+      message: 'Token verification failed'
     });
   }
 };
@@ -57,6 +89,40 @@ const requireAdmin = (req, res, next) => {
     });
   }
   next();
+};
+
+// ==================== HELPER FUNCTIONS ====================
+
+// Helper function để tạo tokens
+const generateTokens = (user) => {
+  const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
+  const refreshSecret = process.env.REFRESH_TOKEN_SECRET || 'fallback-refresh-secret';
+  
+  // Access Token (15 phút)
+  const accessToken = jwt.sign(
+    { 
+      userId: user._id,
+      email: user.email,
+      role: user.role,
+      type: 'access'
+    },
+    jwtSecret,
+    { expiresIn: '15m' }
+  );
+  
+  // Refresh Token (7 ngày)
+  const refreshToken = jwt.sign(
+    { 
+      userId: user._id,
+      email: user.email,
+      type: 'refresh',
+      sessionId: crypto.randomBytes(16).toString('hex')
+    },
+    refreshSecret,
+    { expiresIn: '7d' }
+  );
+  
+  return { accessToken, refreshToken };
 };
 
 // ==================== AUTHENTICATION ENDPOINTS ====================
@@ -109,22 +175,15 @@ router.post('/signup', async (req, res) => {
 
     await newUser.save();
 
-    // Tạo JWT token
-    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
-    const token = jwt.sign(
-      { 
-        userId: newUser._id,
-        email: newUser.email,
-        role: newUser.role
-      },
-      jwtSecret,
-      { expiresIn: '24h' }
-    );
+    // Tạo tokens (access + refresh)
+    const tokens = generateTokens(newUser);
+    await newUser.addRefreshToken(tokens.refreshToken);
 
     res.status(201).json({
       success: true,
       message: 'Đăng ký thành công',
-      token: token,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       user: {
         id: newUser._id,
         name: newUser.name,
@@ -233,22 +292,15 @@ router.post('/login', async (req, res) => {
 
     console.log('=== LOGIN SUCCESSFUL ===');
     
-    // Tạo JWT token
-    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
-    const token = jwt.sign(
-      { 
-        userId: user._id,
-        email: user.email,
-        role: user.role
-      },
-      jwtSecret,
-      { expiresIn: '24h' }
-    );
+    // Tạo tokens (access + refresh)
+    const tokens = generateTokens(user);
+    await user.addRefreshToken(tokens.refreshToken);
 
     res.json({
       success: true,
       message: 'Đăng nhập thành công',
-      token: token,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       user: {
         id: user._id,
         name: user.name,
@@ -260,6 +312,134 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server: ' + error.message
+    });
+  }
+});
+
+// ==================== REFRESH TOKEN ENDPOINTS ====================
+
+// POST /auth/refresh - Refresh access token
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token không được cung cấp'
+      });
+    }
+
+    const refreshSecret = process.env.REFRESH_TOKEN_SECRET || 'fallback-refresh-secret';
+    
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, refreshSecret);
+    
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token type'
+      });
+    }
+
+    // Tìm user và kiểm tra refresh token
+    const user = await User.findById(decoded.userId);
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'User không tồn tại hoặc đã bị vô hiệu hóa'
+      });
+    }
+
+    // Kiểm tra refresh token có trong database không
+    if (!user.isValidRefreshToken(refreshToken)) {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token không hợp lệ'
+      });
+    }
+
+    // Tạo tokens mới
+    const tokens = generateTokens(user);
+    
+    // Lưu refresh token mới
+    await user.addRefreshToken(tokens.refreshToken);
+
+    res.json({
+      success: true,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken
+    });
+
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token đã hết hạn'
+      });
+    }
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token không hợp lệ'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server: ' + error.message
+    });
+  }
+});
+
+// ==================== LOGOUT ENDPOINTS ====================
+
+// POST /auth/logout - Logout (revoke current token)
+router.post('/logout', authenticateToken, async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    const user = req.user;
+
+    // Xóa refresh token cụ thể nếu được cung cấp
+    if (refreshToken) {
+      await user.removeRefreshToken(refreshToken);
+    }
+
+    res.json({
+      success: true,
+      message: 'Đăng xuất thành công'
+    });
+
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server: ' + error.message
+    });
+  }
+});
+
+// POST /auth/logout-all - Logout từ tất cả thiết bị
+router.post('/logout-all', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    // Xóa tất cả refresh tokens
+    await user.clearAllRefreshTokens();
+
+    res.json({
+      success: true,
+      message: 'Đã đăng xuất từ tất cả thiết bị'
+    });
+
+  } catch (error) {
+    console.error('Logout all error:', error);
     res.status(500).json({
       success: false,
       message: 'Lỗi server: ' + error.message
