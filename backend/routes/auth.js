@@ -7,6 +7,7 @@ const User = require('../models/User');
 const { upload, handleUploadErrors } = require('../config/multer');
 const router = express.Router();
 const { requireAdmin, requireModerator } = require('../middleware/roleMiddleware');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
 
 // ==================== MIDDLEWARES ====================
 
@@ -659,7 +660,7 @@ router.delete('/profile', authenticateToken, async (req, res) => {
 
 // ==================== AVATAR ENDPOINTS ====================
 
-// POST /auth/upload-avatar - Upload avatar
+// POST /auth/upload-avatar - Upload avatar lên Cloudinary
 router.post('/upload-avatar', authenticateToken, upload.single('avatar'), handleUploadErrors, async (req, res) => {
   try {
     if (!req.file) {
@@ -669,42 +670,44 @@ router.post('/upload-avatar', authenticateToken, upload.single('avatar'), handle
       });
     }
 
-    console.log('Avatar upload successful:', {
-      user: req.user.email,
+    console.log('File received:', {
       originalName: req.file.originalname,
-      savedAs: req.file.filename,
+      mimetype: req.file.mimetype,
       size: req.file.size,
-      mimetype: req.file.mimetype
+      user: req.user.email
     });
 
     const user = await User.findById(req.user._id);
     
-    // Xóa avatar cũ nếu tồn tại
-    if (user.avatar?.filename) {
+    // Xóa avatar cũ từ Cloudinary nếu tồn tại
+    if (user.avatar?.public_id) {
       try {
-        const fs = require('fs');
-        const path = require('path');
-        const oldFilePath = path.join(__dirname, '../uploads/avatars', user.avatar.filename);
-        
-        if (fs.existsSync(oldFilePath)) {
-          fs.unlinkSync(oldFilePath);
-          console.log('Deleted old avatar:', user.avatar.filename);
-        }
+        await deleteFromCloudinary(user.avatar.public_id);
+        console.log('Deleted old avatar from Cloudinary');
       } catch (error) {
         console.error('Error deleting old avatar:', error);
       }
     }
 
-    // Cập nhật avatar mới
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const avatarUrl = `${baseUrl}/uploads/avatars/${req.file.filename}`;
-    
+    // Upload ảnh mới lên Cloudinary
+    const uploadResult = await uploadToCloudinary(req.file.buffer, {
+      public_id: `avatar_${user._id}_${Date.now()}`
+    });
+
+    console.log('Cloudinary upload result:', {
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      format: uploadResult.format,
+      size: uploadResult.bytes
+    });
+
+    // Cập nhật avatar mới với Cloudinary info
     user.avatar = {
-      url: avatarUrl,
-      filename: req.file.filename,
+      url: uploadResult.secure_url,
+      public_id: uploadResult.public_id,
       originalName: req.file.originalname,
       mimetype: req.file.mimetype,
-      size: req.file.size,
+      size: uploadResult.bytes,
       uploadedAt: new Date()
     };
 
@@ -720,41 +723,31 @@ router.post('/upload-avatar', authenticateToken, upload.single('avatar'), handle
     console.error('Upload avatar error:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi server: ' + error.message
+      message: 'Lỗi upload ảnh: ' + error.message
     });
   }
 });
 
-// DELETE /auth/avatar - Xóa avatar
+// DELETE /auth/avatar - Xóa avatar từ Cloudinary
 router.delete('/avatar', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
 
-    if (!user.avatar?.filename) {
+    if (!user.avatar?.public_id) {
       return res.status(400).json({
         success: false,
         message: 'Không có avatar để xóa'
       });
     }
 
-    const fs = require('fs');
-    const path = require('path');
-    
-    // Xóa file từ server
-    const filePath = path.join(__dirname, '../uploads/avatars', user.avatar.filename);
-    
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      console.log('Deleted avatar file:', user.avatar.filename);
-    } else {
-      console.log('Avatar file not found:', filePath);
-    }
+    // Xóa avatar từ Cloudinary
+    await deleteFromCloudinary(user.avatar.public_id);
 
     // Xóa thông tin avatar từ database
     user.avatar = undefined;
     await user.save();
 
-    console.log('Avatar deleted for user:', user.email);
+    console.log('Avatar deleted from Cloudinary for user:', user.email);
 
     res.json({
       success: true,
@@ -765,7 +758,7 @@ router.delete('/avatar', authenticateToken, async (req, res) => {
     console.error('Delete avatar error:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi server: ' + error.message
+      message: 'Lỗi xóa avatar: ' + error.message
     });
   }
 });

@@ -1,55 +1,63 @@
-// config/multer.js
 const multer = require('multer');
 const path = require('path');
 
-// Cấu hình storage cho Multer (local storage)
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/avatars/');
-  },
-  filename: function (req, file, cb) {
-    const userId = req.user?._id || 'unknown';
-    const timestamp = Date.now();
-    const extension = path.extname(file.originalname);
-    const filename = `avatar_${userId}_${timestamp}${extension}`;
-    console.log('Saving avatar as:', filename);
-    cb(null, filename);
-  }
-});
-
-const fileFilter = (req, file, cb) => {
-  // Chỉ chấp nhận file ảnh
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Chỉ chấp nhận file ảnh (JPEG, PNG, GIF)!'), false);
-  }
-};
+// Storage trong bộ nhớ tạm (sẽ upload lên Cloudinary sau)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
-  fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    // Kiểm tra file type
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Chỉ chấp nhận file ảnh (JPEG, PNG, GIF, WebP)!'), false);
+    }
   }
 });
 
-// Middleware để xử lý lỗi upload
+// Middleware xử lý lỗi upload
 const handleUploadErrors = (error, req, res, next) => {
-  if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
+  if (error) {
+    console.error('Upload error:', error);
+    
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          success: false,
+          message: 'File quá lớn. Kích thước tối đa 5MB.'
+        });
+      }
+      
+      if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({
+          success: false,
+          message: 'Trường upload không đúng.'
+        });
+      }
+    }
+    
+    if (error.message.includes('Chỉ chấp nhận file ảnh')) {
       return res.status(400).json({
         success: false,
-        message: 'File quá lớn. Kích thước tối đa là 5MB.'
+        message: error.message
       });
     }
-  } else if (error) {
-    return res.status(400).json({
+    
+    return res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Lỗi upload: ' + error.message
     });
   }
   next();
 };
 
-module.exports = { upload, handleUploadErrors };
+module.exports = {
+  upload,
+  handleUploadErrors
+};
