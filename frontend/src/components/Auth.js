@@ -1,9 +1,9 @@
 // src/components/Auth.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from 'axios'; // Dùng axios trực tiếp, không dùng service
 import ForgotPassword from './ForgotPassword';
 
-const API_BASE_URL = 'http://192.168.1.23:3000';
+const API_BASE_URL = 'http://192.168.1.58:3000';
 
 const Auth = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -106,8 +106,8 @@ const Auth = ({ onLogin }) => {
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/signup';
       const userData = isLogin 
-        ? { 
-            email: formData.email.trim().toLowerCase(),
+        ? {
+          email: formData.email.trim().toLowerCase(),
             password: formData.password 
           }
         : { 
@@ -116,18 +116,28 @@ const Auth = ({ onLogin }) => {
             password: formData.password 
           };
 
-      console.log('Sending request to:', `${API_BASE_URL}${endpoint}`, userData);
+      console.log('🔄 Sending auth request to:', endpoint);
+      console.log('📧 Email:', userData.email);
 
       const response = await axios.post(`${API_BASE_URL}${endpoint}`, userData);
-      console.log('Response received:', response.data);
+      console.log('✅ Auth response received:', response.data);
       
       if (response.data.success) {
         if (isLogin) {
-          console.log('Login successful, token:', response.data.token);
-          console.log('User data:', response.data.user);
+          console.log('🔑 Tokens received:', {
+            accessToken: response.data.accessToken ? 'Yes' : 'No',
+            refreshToken: response.data.refreshToken ? 'Yes' : 'No'
+          });
+          
+          // Gọi onLogin với cả accessToken và refreshToken
+          onLogin(
+            response.data.accessToken, 
+            response.data.refreshToken, 
+            response.data.user
+          );
+          
           setMessage('✅ Đăng nhập thành công!');
           setMessageType('success');
-          onLogin(response.data.token, response.data.user);
         } else {
           setMessage('✅ Đăng ký thành công! Vui lòng đăng nhập.');
           setMessageType('success');
@@ -145,7 +155,7 @@ const Auth = ({ onLogin }) => {
       }
 
     } catch (error) {
-      console.error('Auth error details:', error);
+      console.error('❌ Auth error:', error);
       console.error('Error response:', error.response?.data);
       
       let errorMessage = isLogin ? 'Lỗi khi đăng nhập' : 'Lỗi khi đăng ký';
@@ -191,6 +201,7 @@ const Auth = ({ onLogin }) => {
   };
 
   // Hiển thị Forgot Password component
+
   if (showForgotPassword) {
     return <ForgotPassword onBackToLogin={handleBackToLogin} />;
   }
@@ -199,7 +210,7 @@ const Auth = ({ onLogin }) => {
     <div style={{ 
       display: 'flex', 
       justifyContent: 'center', 
-      alignItems: 'center', 
+      alignItems: 'center',
       minHeight: '80vh', 
       padding: '20px' 
     }}>
@@ -287,11 +298,9 @@ const Auth = ({ onLogin }) => {
                   transition: 'border-color 0.2s',
                   boxSizing: 'border-box'
                 }}
-                onFocus={(e) => e.target.style.borderColor = errors.name ? '#dc3545' : '#667eea'}
-                onBlur={(e) => e.target.style.borderColor = errors.name ? '#dc3545' : '#e9ecef'}
               />
               {errors.name && (
-                <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '6px' }}>
                   ⚠️ {errors.name}
                 </div>
               )}
@@ -320,11 +329,9 @@ const Auth = ({ onLogin }) => {
                 transition: 'border-color 0.2s',
                 boxSizing: 'border-box'
               }}
-              onFocus={(e) => e.target.style.borderColor = errors.email ? '#dc3545' : '#667eea'}
-              onBlur={(e) => e.target.style.borderColor = errors.email ? '#dc3545' : '#e9ecef'}
             />
             {errors.email && (
-              <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '6px' }}>
                 ⚠️ {errors.email}
               </div>
             )}
@@ -353,13 +360,10 @@ const Auth = ({ onLogin }) => {
                 transition: 'border-color 0.2s',
                 boxSizing: 'border-box'
               }}
-              onFocus={(e) => e.target.style.borderColor = errors.password ? '#dc3545' : '#667eea'}
-              onBlur={(e) => e.target.style.borderColor = errors.password ? '#dc3545' : '#e9ecef'}
             />
             {errors.password && (
-              <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                
-              ⚠️ {errors.password}
+              <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '6px' }}>
+                ⚠️ {errors.password}
               </div>
             )}
           </div>
@@ -388,11 +392,9 @@ const Auth = ({ onLogin }) => {
                   transition: 'border-color 0.2s',
                   boxSizing: 'border-box'
                 }}
-                onFocus={(e) => e.target.style.borderColor = errors.confirmPassword ? '#dc3545' : '#667eea'}
-                onBlur={(e) => e.target.style.borderColor = errors.confirmPassword ? '#dc3545' : '#e9ecef'}
               />
               {errors.confirmPassword && (
-                <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '6px' }}>
                   ⚠️ {errors.confirmPassword}
                 </div>
               )}
@@ -418,16 +420,6 @@ const Auth = ({ onLogin }) => {
               gap: '8px',
               transition: 'background-color 0.2s',
               marginBottom: '15px'
-            }}
-            onMouseOver={(e) => {
-              if (!loading && apiStatus !== 'error') {
-                e.target.style.background = '#5a67d8';
-              }
-            }}
-            onMouseOut={(e) => {
-              if (!loading && apiStatus !== 'error') {
-                e.target.style.background = '#667eea';
-              }
             }}
           >
             {loading ? (
@@ -471,7 +463,7 @@ const Auth = ({ onLogin }) => {
           paddingTop: '20px',
           borderTop: '1px solid #e9ecef',
           textAlign: 'center'
-        }}>
+          }}>
           <p style={{ color: '#666', margin: 0, fontSize: '0.95rem' }}>
             {isLogin ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'}
             <span 
@@ -487,25 +479,6 @@ const Auth = ({ onLogin }) => {
               {isLogin ? 'Đăng ký ngay' : 'Đăng nhập'}
             </span>
           </p>
-        </div>
-
-        {/* Validation Rules */}
-        <div style={{
-          marginTop: '25px',
-          padding: '15px',
-          background: '#f8f9fa',
-          borderRadius: '6px',
-          borderLeft: '4px solid #667eea'
-        }}>
-          <h4 style={{ marginBottom: '10px', color: '#333', fontSize: '0.95rem' }}>
-            📋 Quy định {isLogin ? 'đăng nhập' : 'đăng ký'}:
-          </h4>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: '#666', fontSize: '0.85rem' }}>
-            {!isLogin && <li style={{ padding: '2px 0' }}>• 👤 Họ tên: Không được trống, tối đa 50 ký tự</li>}
-            <li style={{ padding: '2px 0' }}>• 📧 Email: Định dạng email hợp lệ</li>
-            <li style={{ padding: '2px 0' }}>• 🔒 Mật khẩu: Ít nhất 6 ký tự</li>
-            {!isLogin && <li style={{ padding: '2px 0' }}>• ✅ Mật khẩu xác nhận phải khớp</li>}
-          </ul>
         </div>
 
         <style>{`

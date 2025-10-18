@@ -1,51 +1,91 @@
 // src/App.js
 import React, { useState, useEffect } from 'react';
+import axios from 'axios'; // Giữ axios cho logout
 import AddUser from './components/AddUser';
 import UserList from './components/UserList';
 import Auth from './components/Auth';
 import Profile from './components/Profile';
 import AdminDashboard from './components/AdminDashboard';
 
+const API_BASE_URL = 'http://192.168.1.58:3000';
+
 function App() {
   const [refresh, setRefresh] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'profile', 'admin'
+  const [currentView, setCurrentView] = useState('dashboard');
 
   useEffect(() => {
     // Kiểm tra token khi component mount
-    const token = localStorage.getItem('token');
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = () => {
+    const token = localStorage.getItem('accessToken');
     const userData = localStorage.getItem('user');
     
     if (token && userData) {
       setIsAuthenticated(true);
       setUser(JSON.parse(userData));
+      console.log('✅ User authenticated from localStorage');
+    } else {
+      console.log('🔐 No valid authentication found');
     }
-  }, []);
+  };
 
   const handleUserAdded = () => {
     setRefresh(!refresh);
   };
 
-  const handleLogin = (token, userData) => {
-    localStorage.setItem('token', token);
+  const handleLogin = (accessToken, refreshToken, userData) => {
+    // Lưu cả access token và refresh token
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
     localStorage.setItem('user', JSON.stringify(userData));
+    
     setIsAuthenticated(true);
     setUser(userData);
     setCurrentView('dashboard');
+    
+    console.log('✅ Login successful, tokens saved');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setIsAuthenticated(false);
-    setUser(null);
-    setCurrentView('dashboard');
+  const handleLogout = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      const accessToken = localStorage.getItem('accessToken');
+      
+      // Gọi API logout để revoke token trên server
+      if (refreshToken && accessToken) {
+        await axios.post(`${API_BASE_URL}/auth/logout`, {
+          refreshToken
+        }, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        console.log('✅ Logout API called successfully');
+      }
+    } catch (error) {
+      console.error('❌ Logout API error:', error);
+      // Vẫn tiếp tục xóa local storage dù API có lỗi
+    } finally {
+
+      // Luôn xóa local storage
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      setIsAuthenticated(false);
+      setUser(null);
+      setCurrentView('dashboard');
+      console.log('✅ Local storage cleared');
+    }
   };
 
   const handleProfileUpdate = (updatedUser) => {
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
+    console.log('✅ Profile updated');
   };
 
   const isAdmin = user?.role === 'admin';
@@ -69,7 +109,7 @@ function App() {
       }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '600' }}>
-            Quản lý Users - Group1 Project
+            Quản lý Users - JWT Refresh System
           </h1>
           <p style={{ 
             margin: '5px 0 0 0', 
@@ -80,7 +120,7 @@ function App() {
             justifyContent: 'center',
             gap: '8px'
           }}>
-            <span>🚀 Kết nối MongoDB Atlas</span>
+            <span>🔄 Auto Refresh Token</span>
             {isAdmin && <span style={{ marginLeft: '10px' }}>| 👑 Admin Mode</span>}
           </p>
         </div>
@@ -230,22 +270,22 @@ function App() {
       }}>
         <div style={{ 
           display: 'flex', 
-          justifyContent: 'center', 
+          justifyContent: 'center',
           alignItems: 'center',
           gap: '20px',
           flexWrap: 'wrap'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>🛠️</span>
-            <span>Built with React & Node.js</span>
+            <span>React + Node.js + JWT Refresh</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>🗄️</span>
-            <span>MongoDB Atlas</span>
+            <span>🔄</span>
+            <span>Auto Token Refresh</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>🔐</span>
-            <span>JWT Authentication</span>
+            <span>Secure Session</span>
           </div>
           {isAuthenticated && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -255,7 +295,7 @@ function App() {
           )}
         </div>
         <p style={{ margin: '10px 0 0 0', fontSize: '0.9rem', opacity: 0.7 }}>
-          © 2024 Group1 Project - Quản lý Users System
+          © 2024 Group1 Project - JWT Refresh Token System
         </p>
       </footer>
     </div>
