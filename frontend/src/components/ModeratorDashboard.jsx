@@ -1,8 +1,7 @@
-// src/components/AdminDashboard.jsx
 import React, { useState, useEffect } from 'react';
-import api from '../service/auth'; // THAY ĐỔI: Dùng service thay vì axios
+import api from '../service/auth';
 
-const AdminDashboard = () => {
+const ModeratorDashboard = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -15,87 +14,31 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Fetching users for admin...');
-
-      // THAY ĐỔI: Dùng api service thay vì axios
-      const response = await api.get('/auth/admin/users');
+      const response = await api.get('/auth/moderator/users');
       
-      console.log('✅ Admin users fetched successfully');
-
       if (response.data.success) {
         setUsers(response.data.users);
       }
     } catch (error) {
-      console.error('❌ Fetch users error:', error);
+      console.error('Fetch users error:', error);
       showMessage('❌ Lỗi khi tải danh sách users', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteUser = async (userId, userName) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa user "${userName}"?`)) {
-      return;
-    }
-
-    try {
-      console.log('🗑️ Deleting user:', userId);
-
-      // THAY ĐỔI: Dùng api service thay vì axios
-      const response = await api.delete(`/auth/admin/users/${userId}`);
-
-      if (response.data.success) {
-        showMessage('✅ Xóa user thành công!', 'success');
-        fetchUsers(); // Refresh list
-        console.log('✅ User deleted successfully');
-      }
-    } catch (error) {
-      console.error('❌ Delete user error:', error);
-      const errorMessage = error.response?.data?.message || 'Lỗi khi xóa user';
-      showMessage(`❌ ${errorMessage}`, 'error');
-    }
-  };
-
-  const updateUserRole = async (userId, newRole) => {
-    try {
-      console.log('👑 Updating user role:', userId, '→', newRole);
-
-      // THAY ĐỔI: Dùng api service thay vì axios
-      const response = await api.put(
-        `/auth/admin/users/${userId}/role`,
-        { role: newRole }
-      );
-
-      if (response.data.success) {
-        showMessage(`✅ Đã cập nhật role thành ${newRole}`, 'success');
-        fetchUsers(); // Refresh list
-        console.log('✅ User role updated successfully');
-      }
-    } catch (error) {
-      console.error('❌ Update role error:', error);
-      const errorMessage = error.response?.data?.message || 'Lỗi khi cập nhật role';
-      showMessage(`❌ ${errorMessage}`, 'error');
-    }
-  };
-
   const updateUserStatus = async (userId, isActive) => {
     try {
-      console.log('🔄 Updating user status:', userId, '→', isActive);
-
-      // THAY ĐỔI: Dùng api service thay vì axios
-      const response = await api.put(
-        `/auth/admin/users/${userId}/status`,
-        { isActive }
-      );
+      const response = await api.put(`/auth/moderator/users/${userId}/status`, {
+        isActive
+      });
 
       if (response.data.success) {
-        const statusText = isActive ? 'activated' : 'deactivated';
-        showMessage(`✅ User ${statusText} successfully`, 'success');
-        fetchUsers(); // Refresh list
-        console.log('✅ User status updated successfully');
+        showMessage(`✅ User ${isActive ? 'activated' : 'deactivated'} successfully`, 'success');
+        fetchUsers();
       }
     } catch (error) {
-      console.error('❌ Update user status error:', error);
+      console.error('Update user status error:', error);
       const errorMessage = error.response?.data?.message || 'Lỗi khi cập nhật trạng thái user';
       showMessage(`❌ ${errorMessage}`, 'error');
     }
@@ -113,6 +56,7 @@ const AdminDashboard = () => {
   const getRoleBadge = (role) => {
     const roleStyles = {
       admin: { background: '#dc3545', color: 'white' },
+      moderator: { background: '#ffc107', color: '#212529' },
       user: { background: '#28a745', color: 'white' }
     };
 
@@ -133,22 +77,15 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div style={{ 
-        margin: '20px', 
-        padding: '40px', 
-        textAlign: 'center',
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        border: '1px solid #ddd'
-      }}>
+      <div style={{ textAlign: 'center', padding: '40px' }}>
         <div style={{
-          border: '3px solid #f3f3f3',
-          borderTop: '3px solid #667eea',
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #667eea',
           borderRadius: '50%',
           width: '40px',
           height: '40px',
           animation: 'spin 1s linear infinite',
-          margin: '0 auto 20px'
+          margin: '0 auto 10px'
         }}></div>
         <p>Đang tải danh sách users...</p>
       </div>
@@ -171,7 +108,7 @@ const AdminDashboard = () => {
         borderBottom: '2px solid #f0f0f0',
         paddingBottom: '15px'
       }}>
-        <h2 style={{ color: '#333', margin: 0 }}>👑 Admin Dashboard</h2>
+        <h2 style={{ color: '#333', margin: 0 }}>🛡️ Moderator Dashboard</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ color: '#666', fontSize: '0.9rem' }}>
             Tổng số users: <strong>{users.length}</strong>
@@ -230,26 +167,11 @@ const AdminDashboard = () => {
                 <td style={{ padding: '12px' }}>
                   <div>
                     <strong>{user.name}</strong>
-                    <div style={{ fontSize: '0.8rem', color: '#666', fontFamily: 'monospace' }}>
-                      {user._id?.substring(0, 8)}...
-                    </div>
                   </div>
                 </td>
                 <td style={{ padding: '12px' }}>{user.email}</td>
                 <td style={{ padding: '12px' }}>
-                  <select
-                    value={user.role}
-                    onChange={(e) => updateUserRole(user._id, e.target.value)}
-                    style={{
-                      padding: '4px 8px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '0.8rem'
-                    }}
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                  {getRoleBadge(user.role)}
                 </td>
                 <td style={{ padding: '12px' }}>
                   <select
@@ -272,21 +194,9 @@ const AdminDashboard = () => {
                   {new Date(user.createdAt).toLocaleDateString('vi-VN')}
                 </td>
                 <td style={{ padding: '12px', textAlign: 'center' }}>
-                  <button
-                    onClick={() => deleteUser(user._id, user.name)}
-                    style={{
-                      padding: '6px 12px',
-                      backgroundColor: '#dc3545',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem'
-                    }}
-                    disabled={user.role === 'admin'} // Không cho xóa admin
-                  >
-                    🗑️ Xóa
-                  </button>
+                  <span style={{ color: '#6c757d', fontSize: '0.8rem' }}>
+                    Chỉ xem
+                  </span>
                 </td>
               </tr>
             ))}
@@ -295,12 +205,8 @@ const AdminDashboard = () => {
       </div>
 
       {users.length === 0 && (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '40px', 
-          color: '#666' 
-        }}>
-          📝 Không có users nào trong hệ thống
+        <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+          📝 Không có users nào để quản lý
         </div>
       )}
 
@@ -314,4 +220,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default ModeratorDashboard;
