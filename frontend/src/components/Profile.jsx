@@ -1,6 +1,9 @@
 // src/components/Profile.jsx
 import React, { useState, useEffect } from 'react';
-import api from '../service/auth'; // THAY ĐỔI: Dùng service thay vì axios
+import api from '../service/auth';
+import AvatarUpload from './AvatarUpload';
+
+
 
 const Profile = ({ onProfileUpdate }) => {
   const [user, setUser] = useState(null);
@@ -48,6 +51,14 @@ const Profile = ({ onProfileUpdate }) => {
       setLoading(false);
     }
   };
+
+    const handleAvatarUpdate = (newAvatar) => {
+    setUser(prevUser => ({
+      ...prevUser,
+      avatar: newAvatar
+    }));
+    showMessage('✅ Cập nhật avatar thành công!', 'success');
+  }
 
   const validateForm = () => {
     const newErrors = {};
@@ -205,7 +216,7 @@ const Profile = ({ onProfileUpdate }) => {
       border: '1px solid #ddd', 
       borderRadius: '8px',
       backgroundColor: 'white',
-      maxWidth: '600px',
+      maxWidth: '800px',
       margin: '40px auto'
     }}>
       <div style={{
@@ -249,6 +260,21 @@ const Profile = ({ onProfileUpdate }) => {
           {message}
         </div>
       )}
+
+            {/* THÊM: Phần Avatar */}
+      <div style={{
+        marginBottom: '30px',
+        padding: '20px',
+        border: '1px solid #e9ecef',
+        borderRadius: '8px',
+        backgroundColor: '#f8f9fa'
+      }}>
+        <h3 style={{ marginBottom: '15px', color: '#333' }}>🖼️ Avatar</h3>
+        <AvatarUpload 
+          user={user} 
+          onAvatarUpdate={handleAvatarUpdate} 
+        />
+      </div>
 
       {!editing ? (
         // View mode
