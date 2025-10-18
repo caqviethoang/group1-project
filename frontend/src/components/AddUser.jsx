@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.1.38:3000';
+const API_BASE_URL = 'http://192.168.1.58:3000';
 
 const AddUser = ({ onUserAdded }) => {
   const [formData, setFormData] = useState({
