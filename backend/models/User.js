@@ -4,26 +4,25 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Name is required'],
+    required: true,
     trim: true,
-    maxlength: [50, 'Name cannot exceed 50 characters']
+    maxlength: 50
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
+    required: true,
     unique: true,
-    trim: true,
     lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    trim: true
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters']
+    required: true,
+    minlength: 6
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['user', 'moderator', 'admin'],
     default: 'user'
   },
   isActive: {
@@ -36,10 +35,7 @@ const userSchema = new mongoose.Schema({
     originalName: String,
     mimetype: String,
     size: Number,
-    uploadedAt: {
-      type: Date,
-      default: Date.now
-    }
+    uploadedAt: Date
   },
   resetPasswordToken: String,
   resetPasswordExpire: Date,
@@ -98,6 +94,46 @@ userSchema.methods.getResetPasswordToken = function() {
   this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
   
   return resetToken;
+};
+
+userSchema.methods.hasRole = function(role) {
+  const roleHierarchy = {
+    'user': 1,
+    'moderator': 2, 
+    'admin': 3
+  };
+  return roleHierarchy[this.role] >= roleHierarchy[role];
+};
+
+userSchema.statics.createSampleUsers = async function() {
+  const users = [
+    {
+      name: 'Admin User',
+      email: 'admin@example.com',
+      password: 'admin123',
+      role: 'admin'
+    },
+    {
+      name: 'Moderator User', 
+      email: 'moderator@example.com',
+      password: 'moderator123',
+      role: 'moderator'
+    },
+    {
+      name: 'Regular User',
+      email: 'user@example.com', 
+      password: 'user123',
+      role: 'user'
+    }
+  ];
+  for (const userData of users) {
+    const existingUser = await this.findOne({ email: userData.email });
+    if (!existingUser) {
+      const user = new this(userData);
+      await user.save();
+      console.log(`✅ Created sample user: ${userData.email} (${userData.role})`);
+    }
+  }
 };
 
 // Thêm method để thêm refresh token
