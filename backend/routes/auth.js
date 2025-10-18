@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const { upload, handleUploadErrors } = require('../config/multer');
 const router = express.Router();
+const { requireAdmin, requireModerator } = require('../middleware/roleMiddleware');
 
 // ==================== MIDDLEWARES ====================
 
@@ -78,17 +79,6 @@ const authenticateToken = async (req, res, next) => {
       message: 'Token verification failed'
     });
   }
-};
-
-// Middleware phân quyền Admin
-const requireAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied. Admin role required.'
-    });
-  }
-  next();
 };
 
 // ==================== HELPER FUNCTIONS ====================
@@ -1090,6 +1080,88 @@ router.post('/test-password', async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==================== MODERATOR ENDPOINTS ====================
+
+// GET /auth/moderator/users - Lấy danh sách users (moderator có thể xem)
+router.get('/moderator/users', authenticateToken, requireModerator, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '' } = req.query;
+    
+    const query = { role: { $ne: 'admin' } }; // Moderator không thấy admin
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const users = await User.find(query)
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      success: true,
+      count: users.length,
+      total: total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+      users: users
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server: ' + error.message
+    });
+  }
+});
+
+// PUT /auth/moderator/users/:id/status - Moderator có thể active/inactive user
+router.put('/moderator/users/:id/status', authenticateToken, requireModerator, async (req, res) => {
+  try {
+    const { isActive } = req.body;
+    const userId = req.params.id;
+
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Moderator không thể thay đổi admin hoặc moderator khác
+    if (user.role === 'admin' || (user.role === 'moderator' && req.user.role !== 'admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Không có quyền thay đổi user này'
+      });
+    }
+
+    user.isActive = isActive;
+    await user.save();
+
+    const statusText = isActive ? 'activated' : 'deactivated';
+    res.json({
+      success: true,
+      message: `User ${statusText} successfully`,
+      user: await User.findById(userId).select('-password')
+    });
+  } catch (error) {
+    console.error('Update user status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server: ' + error.message
+    });
   }
 });
 

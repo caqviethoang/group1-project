@@ -17,6 +17,16 @@ console.log('- MONGODB_URI exists:', !!process.env.MONGODB_URI);
 // Kết nối MongoDB
 connectDB();
 
+mongoose.connection.once('open', async () => {
+  try {
+    const User = require('./models/User');
+    await User.createSampleUsers();
+    console.log('✅ Sample users created (if not exists)');
+  } catch (error) {
+    console.error('❌ Error creating sample users:', error);
+  }
+});
+
 // CORS configuration
 app.use(cors({
   origin: true,
