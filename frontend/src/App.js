@@ -6,6 +6,8 @@ import UserList from './components/UserList';
 import Auth from './components/Auth';
 import Profile from './components/Profile';
 import AdminDashboard from './components/AdminDashboard';
+import ModeratorDashboard from './components/ModeratorDashboard';
+
 
 const API_BASE_URL = 'http://192.168.1.58:3000';
 
@@ -89,13 +91,15 @@ function App() {
   };
 
   const isAdmin = user?.role === 'admin';
+const isModerator = user?.role === 'moderator' || isAdmin;
 
   // Navigation items
   const navItems = [
-    { key: 'dashboard', label: '📊 Dashboard', show: true },
-    { key: 'admin', label: '👑 Admin', show: isAdmin },
-    { key: 'profile', label: '👤 Profile', show: true }
-  ];
+  { key: 'dashboard', label: '📊 Dashboard', show: true },
+  { key: 'admin', label: '👑 Admin', show: isAdmin },
+  { key: 'moderator', label: '🛡️ Moderator', show: isModerator },
+  { key: 'profile', label: '👤 Profile', show: true }
+];
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
@@ -246,18 +250,20 @@ function App() {
       </header>
       
       <main style={{ minHeight: 'calc(100vh - 120px)', padding: '20px' }}>
-        {!isAuthenticated ? (
-          <Auth onLogin={handleLogin} />
-        ) : currentView === 'profile' ? (
-          <Profile onProfileUpdate={handleProfileUpdate} />
-        ) : currentView === 'admin' ? (
-          <AdminDashboard />
-        ) : (
-          <>
-            <AddUser onUserAdded={handleUserAdded} />
-            <UserList key={refresh} />
-          </>
-        )}
+      {!isAuthenticated ? (
+        <Auth onLogin={handleLogin} />
+      ) : currentView === 'profile' ? (
+        <Profile onProfileUpdate={handleProfileUpdate} />
+      ) : currentView === 'moderator' ? (
+        <ModeratorDashboard />
+      ) : currentView === 'admin' ? (
+        <AdminDashboard />
+      ) : (
+    <>
+      <AddUser onUserAdded={handleUserAdded} />
+      <UserList key={refresh} />
+    </>
+     )}
       </main>
 
       {/* Footer */}
@@ -289,9 +295,9 @@ function App() {
           </div>
           {isAuthenticated && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>👤</span>
-              <span>Role: {user?.role}</span>
-            </div>
+          <span>👤</span>
+          <span>Role: {user?.role} {isAdmin && '👑'} {user?.role === 'moderator' && '🛡️'}</span>
+        </div>
           )}
         </div>
         <p style={{ margin: '10px 0 0 0', fontSize: '0.9rem', opacity: 0.7 }}>
