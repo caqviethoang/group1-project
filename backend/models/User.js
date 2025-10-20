@@ -136,7 +136,7 @@ userSchema.statics.createSampleUsers = async function() {
   }
 };
 
-// Thêm method để thêm refresh token
+// Các phương thức quản lý refresh token cho User model
 userSchema.methods.addRefreshToken = function(token, expiresIn = '7d') {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7); // 7 ngày
@@ -154,20 +154,17 @@ userSchema.methods.addRefreshToken = function(token, expiresIn = '7d') {
   return this.save();
 };
 
-// Thêm method để xóa refresh token
 userSchema.methods.removeRefreshToken = function(token) {
   this.refreshTokens = this.refreshTokens.filter(t => t.token !== token);
   return this.save();
 };
 
-// Thêm method để xóa tất cả refresh tokens
 userSchema.methods.clearAllRefreshTokens = function() {
   this.refreshTokens = [];
   this.lastLogoutAt = new Date();
   return this.save();
 };
 
-// Thêm method để kiểm tra token hợp lệ
 userSchema.methods.isValidRefreshToken = function(token) {
   const tokenData = this.refreshTokens.find(t => t.token === token);
   if (!tokenData) return false;
@@ -176,43 +173,3 @@ userSchema.methods.isValidRefreshToken = function(token) {
 };
 
 module.exports = mongoose.models.User || mongoose.model('User', userSchema);
-// Các phương thức quản lý refresh token cho User model
-
-// Thêm method để thêm refresh token
-userSchema.methods.addRefreshToken = function(token, expiresIn = '7d') {
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7); // 7 ngày
-  
-  this.refreshTokens.push({
-    token,
-    expiresAt
-  });
-  
-  // Giữ chỉ 5 token gần nhất
-  if (this.refreshTokens.length > 5) {
-    this.refreshTokens = this.refreshTokens.slice(-5);
-  }
-  
-  return this.save();
-};
-
-// Thêm method để xóa refresh token
-userSchema.methods.removeRefreshToken = function(token) {
-  this.refreshTokens = this.refreshTokens.filter(t => t.token !== token);
-  return this.save();
-};
-
-// Thêm method để xóa tất cả refresh tokens
-userSchema.methods.clearAllRefreshTokens = function() {
-  this.refreshTokens = [];
-  this.lastLogoutAt = new Date();
-  return this.save();
-};
-
-// Thêm method để kiểm tra token hợp lệ
-userSchema.methods.isValidRefreshToken = function(token) {
-  const tokenData = this.refreshTokens.find(t => t.token === token);
-  if (!tokenData) return false;
-  
-  return new Date() < new Date(tokenData.expiresAt);
-};

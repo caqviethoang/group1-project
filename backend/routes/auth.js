@@ -1,4 +1,4 @@
-// routes/auth.js
+// routes/auth.js - CHỈ SỬA PHẦN LOGGING
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -157,7 +157,7 @@ router.post('/signup', async (req, res) => {
       });
     }
 
-    // Tạo user mới - GỬI PASSWORD GỐC, pre-save hook sẽ hash
+    // Tạo user mới
     const newUser = new User({
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -208,18 +208,22 @@ router.post('/login', async (req, res) => {
     if (!email?.trim()) {
       console.log('ERROR: Email is empty');
       
-      // Ghi log login failed
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      await Log.logActivity(
-        null,
-        'login_failed',
-        ipAddress,
-        req.get('User-Agent') || '',
-        {
-          email: email,
-          reason: 'Email is empty'
-        }
-      );
+      // Ghi log login failed - SỬA: dùng try-catch
+      try {
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        await Log.logActivity(
+          null,
+          'login_failed',
+          ipAddress,
+          req.get('User-Agent') || '',
+          {
+            email: email,
+            reason: 'Email is empty'
+          }
+        );
+      } catch (logError) {
+        console.error('Logging error:', logError);
+      }
       
       return res.status(400).json({
         success: false,
@@ -230,18 +234,22 @@ router.post('/login', async (req, res) => {
     if (!password) {
       console.log('ERROR: Password is empty');
       
-      // Ghi log login failed
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      await Log.logActivity(
-        null,
-        'login_failed',
-        ipAddress,
-        req.get('User-Agent') || '',
-        {
-          email: email,
-          reason: 'Password is empty'
-        }
-      );
+      // Ghi log login failed - SỬA: dùng try-catch
+      try {
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        await Log.logActivity(
+          null,
+          'login_failed',
+          ipAddress,
+          req.get('User-Agent') || '',
+          {
+            email: email,
+            reason: 'Password is empty'
+          }
+        );
+      } catch (logError) {
+        console.error('Logging error:', logError);
+      }
       
       return res.status(400).json({
         success: false,
@@ -258,18 +266,22 @@ router.post('/login', async (req, res) => {
     if (!user) {
       console.log('ERROR: User not found in database');
       
-      // Ghi log login failed
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      await Log.logActivity(
-        null,
-        'login_failed',
-        ipAddress,
-        req.get('User-Agent') || '',
-        {
-          email: email,
-          reason: 'User not found'
-        }
-      );
+      // Ghi log login failed - SỬA: dùng try-catch
+      try {
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        await Log.logActivity(
+          null,
+          'login_failed',
+          ipAddress,
+          req.get('User-Agent') || '',
+          {
+            email: email,
+            reason: 'User not found'
+          }
+        );
+      } catch (logError) {
+        console.error('Logging error:', logError);
+      }
       
       return res.status(400).json({
         success: false,
@@ -290,19 +302,23 @@ router.post('/login', async (req, res) => {
     if (!user.isActive) {
       console.log('ERROR: User account is inactive');
       
-      // Ghi log login failed
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      await Log.logActivity(
-        user._id,
-        'login_failed',
-        ipAddress,
-        req.get('User-Agent') || '',
-        {
-          email: email,
-          reason: 'Account inactive',
-          userId: user._id
-        }
-      );
+      // Ghi log login failed - SỬA: dùng try-catch
+      try {
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        await Log.logActivity(
+          user._id,
+          'login_failed',
+          ipAddress,
+          req.get('User-Agent') || '',
+          {
+            email: email,
+            reason: 'Account inactive',
+            userId: user._id
+          }
+        );
+      } catch (logError) {
+        console.error('Logging error:', logError);
+      }
       
       return res.status(403).json({
         success: false,
@@ -314,19 +330,23 @@ router.post('/login', async (req, res) => {
     if (!user.password) {
       console.log('ERROR: User has no password in database');
       
-      // Ghi log login failed
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      await Log.logActivity(
-        user._id,
-        'login_failed',
-        ipAddress,
-        req.get('User-Agent') || '',
-        {
-          email: email,
-          reason: 'No password in database',
-          userId: user._id
-        }
-      );
+      // Ghi log login failed - SỬA: dùng try-catch
+      try {
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        await Log.logActivity(
+          user._id,
+          'login_failed',
+          ipAddress,
+          req.get('User-Agent') || '',
+          {
+            email: email,
+            reason: 'No password in database',
+            userId: user._id
+          }
+        );
+      } catch (logError) {
+        console.error('Logging error:', logError);
+      }
       
       return res.status(400).json({
         success: false,
@@ -343,24 +363,24 @@ router.post('/login', async (req, res) => {
 
     if (!isMatch) {
       console.log('ERROR: Password does not match');
-      // Debug thêm
-      const testHash = await bcrypt.hash(password, 10);
-      console.log('Test hash of input password:', testHash.substring(0, 20) + '...');
-      console.log('Hashes identical:', user.password === testHash);
       
-      // Ghi log login failed
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      await Log.logActivity(
-        user._id,
-        'login_failed',
-        ipAddress,
-        req.get('User-Agent') || '',
-        {
-          email: email,
-          reason: 'Invalid password',
-          userId: user._id
-        }
-      );
+      // Ghi log login failed - SỬA: dùng try-catch
+      try {
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        await Log.logActivity(
+          user._id,
+          'login_failed',
+          ipAddress,
+          req.get('User-Agent') || '',
+          {
+            email: email,
+            reason: 'Invalid password',
+            userId: user._id
+          }
+        );
+      } catch (logError) {
+        console.error('Logging error:', logError);
+      }
       
       return res.status(400).json({
         success: false,
@@ -374,17 +394,21 @@ router.post('/login', async (req, res) => {
     const tokens = generateTokens(user);
     await user.addRefreshToken(tokens.refreshToken);
 
-    // Ghi log login success
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    await Log.logActivity(
-      user._id,
-      'login_success',
-      ipAddress,
-      req.get('User-Agent') || '',
-      {
-        loginMethod: 'email_password'
-      }
-    );
+    // Ghi log login success - SỬA: dùng try-catch
+    try {
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      await Log.logActivity(
+        user._id,
+        'login_success',
+        ipAddress,
+        req.get('User-Agent') || '',
+        {
+          loginMethod: 'email_password'
+        }
+      );
+    } catch (logError) {
+      console.error('Logging error:', logError);
+    }
 
     res.json({
       success: true,
