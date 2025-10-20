@@ -1,11 +1,12 @@
-// src/components/Auth.jsx
+// src/components/Auth.js
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+// Sửa import từ login, register thành loginUser, registerUser
+import { loginUser, registerUser, clearError } from '../store/slices/authSlice';
 import ForgotPassword from './ForgotPassword';
 
-const API_BASE_URL = 'http://26.178.21.116:3000';
-
-const Auth = ({ onLogin }) => {
+const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -14,53 +15,51 @@ const Auth = ({ onLogin }) => {
     password: '',
     confirmPassword: ''
   });
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState('');
   const [errors, setErrors] = useState({});
   const [apiStatus, setApiStatus] = useState('checking');
+  
+  const dispatch = useDispatch();
+  const { isAuthenticated, loading, error } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
 
+  // Check API connection
   useEffect(() => {
     checkApiConnection();
   }, []);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Clear error when form changes
+  useEffect(() => {
+    if (error) {
+      dispatch(clearError());
+    }
+  }, [formData, error, dispatch]);
+
   const checkApiConnection = async () => {
     try {
-      console.log('🔍 Testing connection to:', `${API_BASE_URL}/health`);
-      
-      const response = await axios.get(`${API_BASE_URL}/health`, {
-        timeout: 10000
+      const response = await fetch('http://26.178.21.116:3000/health', {
+        method: 'GET',
+        timeout: 5000
       });
       
-      console.log('📡 Response status:', response.status);
-      console.log('📦 Response data:', response.data);
-      
-      // SỬA: Kiểm tra status thay vì success
-      if (response.data.status === 'OK' && response.data.database === 'Connected') {
-        setApiStatus('connected');
-        console.log('🎉 API Connection Successful!');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'OK' && data.database === 'Connected') {
+          setApiStatus('connected');
+        } else {
+          setApiStatus('error');
+        }
       } else {
         setApiStatus('error');
-        console.log('⚠️ API responded but with error status');
       }
     } catch (error) {
-      console.error('💥 API connection error:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      
-      // Hiển thị chi tiết lỗi
-      if (error.code === 'ECONNREFUSED') {
-        console.error('❌ Connection refused - Backend not reachable');
-      } else if (error.code === 'NETWORK_ERROR') {
-        console.error('❌ Network error - Check VPN/firewall');
-      } else if (error.response) {
-        console.error(`❌ Backend error: ${error.response.status}`);
-      }
-      
+      console.error('API connection error:', error);
       setApiStatus('error');
     }
   };
@@ -68,28 +67,24 @@ const Auth = ({ onLogin }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Validate name (chỉ cho đăng ký)
     if (!isLogin && !formData.name.trim()) {
       newErrors.name = 'Tên không được để trống';
     } else if (!isLogin && formData.name.trim().length > 50) {
       newErrors.name = 'Tên không được vượt quá 50 ký tự';
     }
 
-    // Validate email
     if (!formData.email.trim()) {
       newErrors.email = 'Email không được để trống';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email không hợp lệ';
     }
 
-    // Validate password
     if (!formData.password.trim()) {
       newErrors.password = 'Mật khẩu không được để trống';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
     }
 
-    // Validate confirm password (chỉ cho đăng ký)
     if (!isLogin && formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
     }
@@ -105,18 +100,11 @@ const Auth = ({ onLogin }) => {
       [name]: value
     });
 
-    // Clear error when user types
     if (errors[name]) {
       setErrors({
         ...errors,
         [name]: ''
       });
-    }
-
-    // Clear message when user starts typing
-    if (message) {
-      setMessage('');
-      setMessageType('');
     }
   };
 
@@ -127,77 +115,36 @@ const Auth = ({ onLogin }) => {
       return;
     }
 
-    setLoading(true);
-    setMessage('');
-
     try {
-      const endpoint = isLogin ? '/auth/login' : '/auth/signup';
-      const userData = isLogin 
-        ? {
-            email: formData.email.trim().toLowerCase(),
-            password: formData.password 
-          }
-        : { 
-            name: formData.name.trim(), 
-            email: formData.email.trim().toLowerCase(), 
-            password: formData.password 
-          };
-
-      console.log('🔄 Sending auth request to:', endpoint);
-      console.log('📧 Email:', userData.email);
-
-      const response = await axios.post(`${API_BASE_URL}${endpoint}`, userData);
-      console.log('✅ Auth response received:', response.data);
-      
-      if (response.data.success) {
-        if (isLogin) {
-          console.log('🔑 Tokens received:', {
-            accessToken: response.data.accessToken ? 'Yes' : 'No',
-            refreshToken: response.data.refreshToken ? 'Yes' : 'No'
-          });
-          
-          // Gọi onLogin với cả accessToken và refreshToken
-          onLogin(
-            response.data.accessToken, 
-            response.data.refreshToken, 
-            response.data.user
-          );
-          
-          setMessage('✅ Đăng nhập thành công!');
-          setMessageType('success');
-        } else {
-          setMessage('✅ Đăng ký thành công! Vui lòng đăng nhập.');
-          setMessageType('success');
-          setIsLogin(true);
-          setFormData({ 
-            name: '', 
-            email: '', 
-            password: '', 
-            confirmPassword: '' 
-          });
-        }
+      if (isLogin) {
+        // Sửa từ login thành loginUser
+        await dispatch(loginUser({
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password
+        })).unwrap();
+        
+        // Login successful - navigation will be handled by useEffect
+      } else {
+        // Sửa từ register thành registerUser
+        await dispatch(registerUser({
+          name: formData.name.trim(),
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password
+        })).unwrap();
+        
+        // After successful registration, switch to login mode
+        setIsLogin(true);
+        setFormData({ 
+          name: '', 
+          email: '', 
+          password: '', 
+          confirmPassword: '' 
+        });
         setErrors({});
-      } else {
-        throw new Error(response.data.message);
       }
-
     } catch (error) {
-      console.error('❌ Auth error:', error);
-      console.error('Error response:', error.response?.data);
-      
-      let errorMessage = isLogin ? 'Lỗi khi đăng nhập' : 'Lỗi khi đăng ký';
-      
-      if (error.response && error.response.data) {
-        errorMessage = `❌ ${error.response.data.message || errorMessage}`;
-      } else if (error.code === 'NETWORK_ERROR' || !error.response) {
-        errorMessage = '❌ Không thể kết nối đến server';
-      } else {
-        errorMessage = `❌ ${error.message}`;
-      }
-      setMessage(errorMessage);
-      setMessageType('error');
-    } finally {
-      setLoading(false);
+      // Error is handled by Redux and displayed in the component
+      console.error('Auth error:', error);
     }
   };
 
@@ -210,25 +157,11 @@ const Auth = ({ onLogin }) => {
       confirmPassword: '' 
     });
     setErrors({});
-    setMessage('');
-    setMessageType('');
-    setShowForgotPassword(false);
-  };
-
-  const handleForgotPassword = () => {
-    setShowForgotPassword(true);
-    setMessage('');
-    setMessageType('');
-  };
-
-  const handleBackToLogin = () => {
-    setShowForgotPassword(false);
-    setMessage('');
-    setMessageType('');
+    dispatch(clearError());
   };
 
   if (showForgotPassword) {
-    return <ForgotPassword onBackToLogin={handleBackToLogin} />;
+    return <ForgotPassword onBackToLogin={() => setShowForgotPassword(false)} />;
   }
 
   return (
@@ -288,18 +221,19 @@ const Auth = ({ onLogin }) => {
           }
         </p>
         
-        {message && (
+        {/* Redux Error Message */}
+        {error && (
           <div style={{ 
             padding: '12px', 
             borderRadius: '6px', 
             marginBottom: '15px', 
             textAlign: 'center',
-            backgroundColor: messageType === 'success' ? '#d4edda' : '#f8d7da',
-            color: messageType === 'success' ? '#155724' : '#721c24',
-            border: `1px solid ${messageType === 'success' ? '#c3e6cb' : '#f5c6cb'}`,
+            backgroundColor: '#f8d7da',
+            color: '#721c24',
+            border: '1px solid #f5c6cb',
             whiteSpace: 'pre-line'
           }}>
-            {message}
+            ❌ {error}
           </div>
         )}
 
@@ -472,7 +406,7 @@ const Auth = ({ onLogin }) => {
           {isLogin && (
             <div style={{ textAlign: 'center', marginBottom: '15px' }}>
               <span 
-                onClick={handleForgotPassword}
+                onClick={() => setShowForgotPassword(true)}
                 style={{ 
                   color: '#667eea', 
                   cursor: 'pointer', 
@@ -492,7 +426,7 @@ const Auth = ({ onLogin }) => {
           paddingTop: '20px',
           borderTop: '1px solid #e9ecef',
           textAlign: 'center'
-          }}>
+        }}>
           <p style={{ color: '#666', margin: 0, fontSize: '0.95rem' }}>
             {isLogin ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'}
             <span 
