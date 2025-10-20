@@ -7,9 +7,9 @@ import Auth from './components/Auth';
 import Profile from './components/Profile';
 import AdminDashboard from './components/AdminDashboard';
 import ModeratorDashboard from './components/ModeratorDashboard';
+import LogsManagement from './components/LogManagement';
 
-
-const API_BASE_URL = 'http://192.168.1.58:3000';
+const API_BASE_URL = 'http://26.178.21.116:3000';
 
 function App() {
   const [refresh, setRefresh] = useState(false);
@@ -98,6 +98,7 @@ const isModerator = user?.role === 'moderator' || isAdmin;
   { key: 'dashboard', label: '📊 Dashboard', show: true },
   { key: 'admin', label: '👑 Admin', show: isAdmin },
   { key: 'moderator', label: '🛡️ Moderator', show: isModerator },
+  { key: 'logs', label: '📋 Logs', show: isAdmin },
   { key: 'profile', label: '👤 Profile', show: true }
 ];
 
@@ -258,6 +259,8 @@ const isModerator = user?.role === 'moderator' || isAdmin;
         <ModeratorDashboard />
       ) : currentView === 'admin' ? (
         <AdminDashboard />
+      ) : currentView === 'logs' ? (  // 👈 THÊM DÒNG NÀY
+        <LogsManagement />
       ) : (
     <>
       <AddUser onUserAdded={handleUserAdded} />

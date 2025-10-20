@@ -1,9 +1,9 @@
 // src/components/Auth.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios'; // Dùng axios trực tiếp, không dùng service
+import axios from 'axios';
 import ForgotPassword from './ForgotPassword';
 
-const API_BASE_URL = 'http://192.168.1.58:3000';
+const API_BASE_URL = 'http://26.178.21.116:3000';
 
 const Auth = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -26,14 +26,41 @@ const Auth = ({ onLogin }) => {
 
   const checkApiConnection = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/auth/test`);
-      if (response.data.success) {
+      console.log('🔍 Testing connection to:', `${API_BASE_URL}/health`);
+      
+      const response = await axios.get(`${API_BASE_URL}/health`, {
+        timeout: 10000
+      });
+      
+      console.log('📡 Response status:', response.status);
+      console.log('📦 Response data:', response.data);
+      
+      // SỬA: Kiểm tra status thay vì success
+      if (response.data.status === 'OK' && response.data.database === 'Connected') {
         setApiStatus('connected');
+        console.log('🎉 API Connection Successful!');
       } else {
         setApiStatus('error');
+        console.log('⚠️ API responded but with error status');
       }
     } catch (error) {
-      console.error('API connection error:', error);
+      console.error('💥 API connection error:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // Hiển thị chi tiết lỗi
+      if (error.code === 'ECONNREFUSED') {
+        console.error('❌ Connection refused - Backend not reachable');
+      } else if (error.code === 'NETWORK_ERROR') {
+        console.error('❌ Network error - Check VPN/firewall');
+      } else if (error.response) {
+        console.error(`❌ Backend error: ${error.response.status}`);
+      }
+      
       setApiStatus('error');
     }
   };
@@ -107,7 +134,7 @@ const Auth = ({ onLogin }) => {
       const endpoint = isLogin ? '/auth/login' : '/auth/signup';
       const userData = isLogin 
         ? {
-          email: formData.email.trim().toLowerCase(),
+            email: formData.email.trim().toLowerCase(),
             password: formData.password 
           }
         : { 
@@ -200,8 +227,6 @@ const Auth = ({ onLogin }) => {
     setMessageType('');
   };
 
-  // Hiển thị Forgot Password component
-
   if (showForgotPassword) {
     return <ForgotPassword onBackToLogin={handleBackToLogin} />;
   }
@@ -241,6 +266,10 @@ const Auth = ({ onLogin }) => {
           {apiStatus === 'connected' && '✅ Đã kết nối với server'}
           {apiStatus === 'error' && '❌ Không thể kết nối với server'}
           {apiStatus === 'checking' && '⏳ Đang kiểm tra kết nối...'}
+          <br />
+          <small style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+            Backend: 26.178.21.116:3000
+          </small>
         </div>
 
         <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>

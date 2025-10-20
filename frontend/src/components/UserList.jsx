@@ -2,8 +2,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../service/auth'; // Dùng service thay vì axios
 
-const API_BASE_URL = 'http://192.168.1.58:3000';
-
 const UserList = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
