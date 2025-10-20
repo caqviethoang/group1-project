@@ -8,6 +8,7 @@ const { upload, handleUploadErrors } = require('../config/multer');
 const router = express.Router();
 const { requireAdmin, requireModerator } = require('../middleware/roleMiddleware');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
+const Log = require('../models/Log');
 
 // ==================== MIDDLEWARES ====================
 
@@ -206,6 +207,20 @@ router.post('/login', async (req, res) => {
     // VALIDATION: Kiểm tra input
     if (!email?.trim()) {
       console.log('ERROR: Email is empty');
+      
+      // Ghi log login failed
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      await Log.logActivity(
+        null,
+        'login_failed',
+        ipAddress,
+        req.get('User-Agent') || '',
+        {
+          email: email,
+          reason: 'Email is empty'
+        }
+      );
+      
       return res.status(400).json({
         success: false,
         message: 'Email không được để trống'
@@ -214,6 +229,20 @@ router.post('/login', async (req, res) => {
 
     if (!password) {
       console.log('ERROR: Password is empty');
+      
+      // Ghi log login failed
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      await Log.logActivity(
+        null,
+        'login_failed',
+        ipAddress,
+        req.get('User-Agent') || '',
+        {
+          email: email,
+          reason: 'Password is empty'
+        }
+      );
+      
       return res.status(400).json({
         success: false,
         message: 'Mật khẩu không được để trống'
@@ -228,6 +257,20 @@ router.post('/login', async (req, res) => {
     
     if (!user) {
       console.log('ERROR: User not found in database');
+      
+      // Ghi log login failed
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      await Log.logActivity(
+        null,
+        'login_failed',
+        ipAddress,
+        req.get('User-Agent') || '',
+        {
+          email: email,
+          reason: 'User not found'
+        }
+      );
+      
       return res.status(400).json({
         success: false,
         message: 'Email hoặc mật khẩu không đúng'
@@ -246,6 +289,21 @@ router.post('/login', async (req, res) => {
     // Kiểm tra tài khoản active
     if (!user.isActive) {
       console.log('ERROR: User account is inactive');
+      
+      // Ghi log login failed
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      await Log.logActivity(
+        user._id,
+        'login_failed',
+        ipAddress,
+        req.get('User-Agent') || '',
+        {
+          email: email,
+          reason: 'Account inactive',
+          userId: user._id
+        }
+      );
+      
       return res.status(403).json({
         success: false,
         message: 'Tài khoản đã bị vô hiệu hóa'
@@ -255,6 +313,21 @@ router.post('/login', async (req, res) => {
     // Kiểm tra password
     if (!user.password) {
       console.log('ERROR: User has no password in database');
+      
+      // Ghi log login failed
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      await Log.logActivity(
+        user._id,
+        'login_failed',
+        ipAddress,
+        req.get('User-Agent') || '',
+        {
+          email: email,
+          reason: 'No password in database',
+          userId: user._id
+        }
+      );
+      
       return res.status(400).json({
         success: false,
         message: 'Tài khoản không hợp lệ'
@@ -275,6 +348,20 @@ router.post('/login', async (req, res) => {
       console.log('Test hash of input password:', testHash.substring(0, 20) + '...');
       console.log('Hashes identical:', user.password === testHash);
       
+      // Ghi log login failed
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      await Log.logActivity(
+        user._id,
+        'login_failed',
+        ipAddress,
+        req.get('User-Agent') || '',
+        {
+          email: email,
+          reason: 'Invalid password',
+          userId: user._id
+        }
+      );
+      
       return res.status(400).json({
         success: false,
         message: 'Email hoặc mật khẩu không đúng'
@@ -286,6 +373,18 @@ router.post('/login', async (req, res) => {
     // Tạo tokens (access + refresh)
     const tokens = generateTokens(user);
     await user.addRefreshToken(tokens.refreshToken);
+
+    // Ghi log login success
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    await Log.logActivity(
+      user._id,
+      'login_success',
+      ipAddress,
+      req.get('User-Agent') || '',
+      {
+        loginMethod: 'email_password'
+      }
+    );
 
     res.json({
       success: true,
@@ -968,148 +1067,82 @@ router.put('/admin/users/:id/status', authenticateToken, requireAdmin, async (re
   }
 });
 
-// ==================== UTILITY ENDPOINTS ====================
+// ==================== LOG MANAGEMENT ENDPOINTS ====================
 
-// GET /auth/verify - Xác thực token
-router.get('/verify', authenticateToken, async (req, res) => {
+// GET /auth/admin/logs - Lấy logs (Admin only)
+router.get('/admin/logs', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password');
+    const { 
+      page = 1, 
+      limit = 50, 
+      action, 
+      userId, 
+      startDate, 
+      endDate,
+      ipAddress 
+    } = req.query;
+
+    const query = {};
     
-    res.json({
-      success: true,
-      user: user,
-      tokenValid: true
-    });
-  } catch (error) {
-    res.status(401).json({
-      success: false,
-      message: 'Invalid token'
-    });
-  }
-});
-
-// GET /auth/test - Test endpoint
-router.get('/test', (req, res) => {
-  res.json({ 
-    success: true,
-    message: 'Auth routes are working!',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// GET /auth/debug-user/:email - Debug user
-router.get('/debug-user/:email', async (req, res) => {
-  try {
-    const user = await User.findOne({ email: req.params.email });
-    if (!user) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'User not found' 
-      });
+    // Filter by action
+    if (action) {
+      query.action = action;
     }
     
-    res.json({
-      success: true,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        avatar: user.avatar,
-        password: user.password ? `exists (length: ${user.password.length})` : 'NULL',
-        createdAt: user.createdAt
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      error: error.message 
-    });
-  }
-});
-
-// GET /auth/debug-all-users - Debug all users
-router.get('/debug-all-users', async (req, res) => {
-  try {
-    const users = await User.find({}).select('name email role isActive avatar createdAt');
-    res.json({
-      success: true,
-      count: users.length,
-      users: users
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      error: error.message 
-    });
-  }
-});
-
-// POST /auth/test-password - Test password matching
-router.post('/test-password', async (req, res) => {
-  try {
-    const { email, password } = req.body;
+    // Filter by user ID
+    if (userId) {
+      query.userId = userId;
+    }
     
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
-    if (!user) {
-      return res.json({ success: false, message: 'User not found' });
+    // Filter by IP address
+    if (ipAddress) {
+      query.ipAddress = { $regex: ipAddress, $options: 'i' };
+    }
+    
+    // Filter by date range
+    if (startDate || endDate) {
+      query.timestamp = {};
+      if (startDate) query.timestamp.$gte = new Date(startDate);
+      if (endDate) query.timestamp.$lte = new Date(endDate);
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    
-    res.json({
-      success: true,
-      isMatch: isMatch,
-      debug: {
-        inputPassword: `"${password}"`,
-        inputLength: password.length,
-        storedHashLength: user.password.length,
-        storedHashStart: user.password.substring(0, 20),
-        userExists: true,
-        userActive: user.isActive
-      }
-    });
-
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ==================== MODERATOR ENDPOINTS ====================
-
-// GET /auth/moderator/users - Lấy danh sách users (moderator có thể xem)
-router.get('/moderator/users', authenticateToken, requireModerator, async (req, res) => {
-  try {
-    const { page = 1, limit = 10, search = '' } = req.query;
-    
-    const query = { role: { $ne: 'admin' } }; // Moderator không thấy admin
-    
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const users = await User.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 })
+    const logs = await Log.find(query)
+      .populate('userId', 'name email role')
+      .sort({ timestamp: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    const total = await User.countDocuments(query);
+    const total = await Log.countDocuments(query);
+
+    // Thống kê actions
+    const actionStats = await Log.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$action',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
 
     res.json({
       success: true,
-      count: users.length,
+      count: logs.length,
       total: total,
       page: parseInt(page),
       pages: Math.ceil(total / limit),
-      users: users
+      logs: logs,
+      stats: {
+        actions: actionStats,
+        period: {
+          startDate: startDate || null,
+          endDate: endDate || null
+        }
+      }
     });
   } catch (error) {
-    console.error('Get users error:', error);
+    console.error('Get logs error:', error);
     res.status(500).json({
       success: false,
       message: 'Lỗi server: ' + error.message
@@ -1117,40 +1150,110 @@ router.get('/moderator/users', authenticateToken, requireModerator, async (req, 
   }
 });
 
-// PUT /auth/moderator/users/:id/status - Moderator có thể active/inactive user
-router.put('/moderator/users/:id/status', authenticateToken, requireModerator, async (req, res) => {
+// GET /auth/admin/logs/stats - Thống kê logs
+router.get('/admin/logs/stats', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { isActive } = req.body;
-    const userId = req.params.id;
-
-    const user = await User.findById(userId);
+    const { days = 7 } = req.query;
     
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
 
-    // Moderator không thể thay đổi admin hoặc moderator khác
-    if (user.role === 'admin' || (user.role === 'moderator' && req.user.role !== 'admin')) {
-      return res.status(403).json({
-        success: false,
-        message: 'Không có quyền thay đổi user này'
-      });
-    }
+    const stats = await Log.aggregate([
+      {
+        $match: {
+          timestamp: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            action: '$action',
+            date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.action',
+          dailyStats: {
+            $push: {
+              date: '$_id.date',
+              count: '$count'
+            }
+          },
+          total: { $sum: '$count' }
+        }
+      },
+      { $sort: { total: -1 } }
+    ]);
 
-    user.isActive = isActive;
-    await user.save();
+    // Top IP addresses
+    const topIPs = await Log.aggregate([
+      {
+        $match: {
+          timestamp: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: '$ipAddress',
+          count: { $sum: 1 },
+          lastActivity: { $max: '$timestamp' }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
 
-    const statusText = isActive ? 'activated' : 'deactivated';
+    // Top users
+    const topUsers = await Log.aggregate([
+      {
+        $match: {
+          timestamp: { $gte: startDate },
+          userId: { $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: '$userId',
+          count: { $sum: 1 },
+          lastActivity: { $max: '$timestamp' }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $unwind: '$user'
+      },
+      {
+        $project: {
+          'user.password': 0
+        }
+      }
+    ]);
+
     res.json({
       success: true,
-      message: `User ${statusText} successfully`,
-      user: await User.findById(userId).select('-password')
+      period: {
+        days: parseInt(days),
+        startDate: startDate,
+        endDate: new Date()
+      },
+      stats: stats,
+      topIPs: topIPs,
+      topUsers: topUsers
     });
   } catch (error) {
-    console.error('Update user status error:', error);
+    console.error('Get logs stats error:', error);
     res.status(500).json({
       success: false,
       message: 'Lỗi server: ' + error.message
