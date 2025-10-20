@@ -5,6 +5,8 @@ const path = require('path');
 const connectDB = require('./config/database');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const { logActivity } = require('./middleware/logMiddleware');
+const { loginRateLimiter, apiRateLimiter } = require('./middleware/rateLimitMiddleware');
 
 const app = express();
 
@@ -27,15 +29,25 @@ mongoose.connection.once('open', async () => {
   }
 });
 
-// CORS configuration
+// CORS configuration - SỬA LẠI
 app.use(cors({
-  origin: true,
+  origin: true, // Cho phép tất cả origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept']
 }));
 
+// Handle preflight requests
+app.options('*', cors());
+
+// Body parser middleware
 app.use(express.json());
+
+// Rate limiting - nên đặt sau body parser
+app.use(apiRateLimiter); // Rate limiting chung
+
+// Logging middleware
+app.use(logActivity);
 
 // Serve static files từ thư mục uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -46,6 +58,7 @@ const userRoutes = require('./routes/user');
 const authRoutes = require('./routes/auth');
 
 // Use routes
+app.use('/auth/login', loginRateLimiter);
 app.use('/users', userRoutes);
 app.use('/auth', authRoutes);
 
@@ -75,8 +88,7 @@ app.get('/', (req, res) => {
       resetPassword: 'POST /auth/reset-password/:token',
       
       // Debug endpoints
-      health: 'GET /health',
-      test: 'GET /auth/test'
+      health: 'GET /health'
     }
   });
 });
@@ -121,9 +133,10 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Local: http://localhost:${PORT}`);
-  console.log(`🌐 Network: http://192.168.1.58:${PORT}`);
+  console.log(`🌐 Network: http://26.178.21.116:${PORT}`);
   console.log(`📊 MongoDB: Connected to groupDB`);
   console.log(`🔑 JWT Secret: ${process.env.JWT_SECRET ? 'Configured' : 'MISSING!'}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📁 Static files: http://localhost:${PORT}/uploads/`);
+  console.log(`🔧 CORS: Enabled for all origins`);
 });
