@@ -1,0 +1,27 @@
+# render.yaml
+services:
+  - type: web
+    name: group1-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        value: mongodb+srv://nguyenminhhieudnc_db_user:123@cluster0.llbjaqb.mongodb.net/groupDB?retryWrites=true&w=majority&appName=Cluster0
+      - key: JWT_SECRET
+        value: your-super-secret-jwt-key-for-group1-project-2024-change-in-production
+      - key: REFRESH_TOKEN_SECRET
+        value: your-super-secret-refresh-token-key-for-group1-project-2024-change-in-production
+      - key: CLOUDINARY_CLOUD_NAME
+        value: dahbc7woa
+      - key: CLOUDINARY_API_KEY
+        value: 923437381355991
+      - key: CLOUDINARY_API_SECRET
+        value: D99viSKqR7hfWiU6hIeKbSok7Ck
+      - key: CLIENT_URL
+        value: https://group1-project-nu.vercel.app 
