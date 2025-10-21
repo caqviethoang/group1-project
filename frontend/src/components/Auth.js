@@ -43,10 +43,15 @@ const Auth = () => {
 
   const checkApiConnection = async () => {
     try {
-      const response = await fetch('http://26.178.21.116:3000/health', {
-        method: 'GET',
-        timeout: 5000
-      });
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 
+      (process.env.NODE_ENV === 'production' 
+        ? 'https://group1-project-dsc3.onrender.com'
+        : 'http://localhost:3000');
+        
+    const response = await fetch(`${API_BASE_URL}/health`, {
+      method: 'GET',
+      timeout: 5000
+    });
       
       if (response.ok) {
         const data = await response.json();

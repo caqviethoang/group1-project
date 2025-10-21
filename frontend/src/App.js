@@ -17,15 +17,15 @@ import LogsManagement from './components/LogManagement';
 import ProtectedRoute from './utils/ProtectedRoute';
 import MainLayout from './components/Layout/MainLayout';
 
-// Auto-detect API URL
-const API_URL = process.env.REACT_APP_API_URL || 
-  (process.env.NODE_ENV === 'production' 
-    ? 'https://group1-project-dsc3.onrender.com'
-    : 'http://localhost:3000');
-
 function App() {
   const dispatch = useDispatch();
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
+
+  // Auto-detect API URL - ĐẶT TRONG COMPONENT hoặc ra ngoài
+  const API_URL = process.env.REACT_APP_API_URL || 
+    (process.env.NODE_ENV === 'production' 
+      ? 'https://group1-project-dsc3.onrender.com'
+      : 'http://localhost:3000');
 
   useEffect(() => {
     // Test connection
@@ -34,7 +34,7 @@ function App() {
       .then(res => res.json())
       .then(data => console.log('✅ Backend connection:', data))
       .catch(err => console.error('❌ Backend connection failed:', err));
-  }, []);
+  }, [API_URL]);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -161,7 +161,7 @@ function App() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>🌐</span>
-                <span>API: {API_URL}</span>
+                <span>Backend: Render</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>👤</span>
@@ -169,7 +169,7 @@ function App() {
               </div>
             </div>
             <p style={{ margin: '10px 0 0 0', fontSize: '0.9rem', opacity: 0.7 }}>
-              © 2024 Group1 Project - Vercel + Render
+              © 2025 Group1 Project - Vercel + Render
             </p>
           </footer>
         )}

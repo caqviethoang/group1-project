@@ -7,19 +7,6 @@ const API_BASE_URL = process.env.REACT_APP_API_URL ||
     ? 'https://group1-project-dsc3.onrender.com'
     : 'http://localhost:3000');
 
-React.useEffect(() => {
-    console.log('🔗 API Base URL:', API_BASE_URL);
-    
-    // Test connection
-    axios.get(`${API_BASE_URL}/health`)
-      .then(response => {
-        console.log('✅ Backend connection successful:', response.data);
-      })
-      .catch(error => {
-        console.error('❌ Backend connection failed:', error);
-      });
-  }, []);
-
 const AddUser = ({ onUserAdded }) => {
   const [formData, setFormData] = useState({
     name: '',
