@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios'; // 🆕 Dùng axios trực tiếp
 
-const API_BASE_URL = 'http://26.178.21.116:3000'; // 🆕 Thêm base URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://26.178.21.116:3000';
 
 // Async thunks for API calls
 export const loginUser = createAsyncThunk(
