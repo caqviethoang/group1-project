@@ -10,7 +10,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: 3000
       - key: MONGODB_URI
         value: mongodb+srv://nguyenminhhieudnc_db_user:123@cluster0.llbjaqb.mongodb.net/groupDB?retryWrites=true&w=majority&appName=Cluster0
       - key: JWT_SECRET
