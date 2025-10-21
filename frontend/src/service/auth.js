@@ -1,7 +1,7 @@
 // src/service/auth.js
 import axios from 'axios';
 
-const API_BASE_URL = 'http://26.178.21.116:3000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://26.178.21.116:3000';
 
 // Tạo instance của axios cho API calls đã authenticated
 const api = axios.create({
