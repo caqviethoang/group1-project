@@ -2,9 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-// Sửa import từ login, register thành loginUser, registerUser
 import { loginUser, registerUser, clearError } from '../store/slices/authSlice';
 import ForgotPassword from './ForgotPassword';
+
+// Auto-detect API URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://group1-project-dsc3.onrender.com'
+    : 'http://localhost:3000');
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -43,15 +48,7 @@ const Auth = () => {
 
   const checkApiConnection = async () => {
     try {
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 
-      (process.env.NODE_ENV === 'production' 
-        ? 'https://group1-project-dsc3.onrender.com'
-        : 'http://localhost:3000');
-        
-    const response = await fetch(`${API_BASE_URL}/health`, {
-      method: 'GET',
-      timeout: 5000
-    });
+      const response = await fetch(`${API_BASE_URL}/health`);
       
       if (response.ok) {
         const data = await response.json();
@@ -122,22 +119,17 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        // Sửa từ login thành loginUser
         await dispatch(loginUser({
           email: formData.email.trim().toLowerCase(),
           password: formData.password
         })).unwrap();
-        
-        // Login successful - navigation will be handled by useEffect
       } else {
-        // Sửa từ register thành registerUser
         await dispatch(registerUser({
           name: formData.name.trim(),
           email: formData.email.trim().toLowerCase(),
           password: formData.password
         })).unwrap();
         
-        // After successful registration, switch to login mode
         setIsLogin(true);
         setFormData({ 
           name: '', 
@@ -148,7 +140,6 @@ const Auth = () => {
         setErrors({});
       }
     } catch (error) {
-      // Error is handled by Redux and displayed in the component
       console.error('Auth error:', error);
     }
   };
@@ -206,7 +197,7 @@ const Auth = () => {
           {apiStatus === 'checking' && '⏳ Đang kiểm tra kết nối...'}
           <br />
           <small style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-            Backend: 26.178.21.116:3000
+            Backend: {API_BASE_URL.replace('https://', '').replace('http://', '')}
           </small>
         </div>
 
