@@ -1,6 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
-import API_BASE_URL from '../../config/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://group1-project-dsc3.onrender.com'
+    : 'http://localhost:3000');
 
 // Async thunks for API calls
 export const loginUser = createAsyncThunk(

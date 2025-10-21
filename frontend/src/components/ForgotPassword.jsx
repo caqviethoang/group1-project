@@ -2,7 +2,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-import API_BASE_URL from '../../config/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://group1-project-dsc3.onrender.com'
+    : 'http://localhost:3000');
 
 const ForgotPassword = ({ onBackToLogin }) => {
   const [email, setEmail] = useState('');

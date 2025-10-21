@@ -3,7 +3,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://26.178.21.116:3000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://group1-project-dsc3.onrender.com'
+    : 'http://localhost:3000');
 
 const MainLayout = ({ children }) => {
   const { user, logout, isAdmin, isModerator } = useAuth();

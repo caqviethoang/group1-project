@@ -3,8 +3,6 @@ import React, { useState, useEffect } from 'react';
 import api from '../service/auth';
 import AvatarUpload from './AvatarUpload';
 
-
-
 const Profile = ({ onProfileUpdate }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
