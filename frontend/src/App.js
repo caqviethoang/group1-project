@@ -22,14 +22,22 @@ function App() {
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    // Auto-fetch profile if token exists but user data is not loaded
+    // Chỉ chạy 1 lần khi component mount
     const token = localStorage.getItem('accessToken');
-    if (token && !user && !loading) {
+    if (token && !user) {
       dispatch(getProfile());
     }
-  }, [isAuthenticated, user, loading, dispatch]);
+    
+    // Test connection chỉ trong development
+    if (process.env.NODE_ENV === 'development') {
+      fetch('https://group1-project-dsc3.onrender.com/health')
+        .then(res => res.json())
+        .then(data => console.log('Backend test:', data))
+        .catch(err => console.error('Backend test failed:', err));
+    }
+  }, [dispatch, user]);
 
-  // Loading spinner
+  // Loading spinner chỉ khi có token và đang loading
   if (loading && localStorage.getItem('accessToken')) {
     return (
       <div style={{ 
