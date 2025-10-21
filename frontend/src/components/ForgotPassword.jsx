@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://26.178.21.116:3000';
+import API_BASE_URL from '../../config/api';
 
 const ForgotPassword = ({ onBackToLogin }) => {
   const [email, setEmail] = useState('');

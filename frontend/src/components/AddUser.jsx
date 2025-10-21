@@ -2,7 +2,20 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://26.178.21.116:3000';
+import API_BASE_URL from '../../config/api';
+
+React.useEffect(() => {
+    console.log('🔗 API Base URL:', API_BASE_URL);
+    
+    // Test connection
+    axios.get(`${API_BASE_URL}/health`)
+      .then(response => {
+        console.log('✅ Backend connection successful:', response.data);
+      })
+      .catch(error => {
+        console.error('❌ Backend connection failed:', error);
+      });
+  }, []);
 
 const AddUser = ({ onUserAdded }) => {
   const [formData, setFormData] = useState({
@@ -125,6 +138,10 @@ const AddUser = ({ onUserAdded }) => {
       <h2>➕ Thêm User Mới</h2>
       <p style={{ color: '#666', marginBottom: '20px' }}>
         Nhập thông tin user để thêm vào hệ thống
+        <br />
+        <small style={{ color: '#888' }}>
+          API: {API_BASE_URL}
+        </small>
       </p>
       
       <form onSubmit={handleSubmit} style={{ maxWidth: '500px' }}>

@@ -17,27 +17,33 @@ import LogsManagement from './components/LogManagement';
 import ProtectedRoute from './utils/ProtectedRoute';
 import MainLayout from './components/Layout/MainLayout';
 
+// Auto-detect API URL
+const API_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://group1-project-dsc3.onrender.com'
+    : 'http://localhost:3000');
+
 function App() {
   const dispatch = useDispatch();
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    // Chỉ chạy 1 lần khi component mount
+    // Test connection
+    console.log('🔗 Testing backend connection to:', API_URL);
+    fetch(`${API_URL}/health`)
+      .then(res => res.json())
+      .then(data => console.log('✅ Backend connection:', data))
+      .catch(err => console.error('❌ Backend connection failed:', err));
+  }, []);
+
+  useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (token && !user) {
       dispatch(getProfile());
     }
-    
-    // Test connection chỉ trong development
-    if (process.env.NODE_ENV === 'development') {
-      fetch('https://group1-project-dsc3.onrender.com/health')
-        .then(res => res.json())
-        .then(data => console.log('Backend test:', data))
-        .catch(err => console.error('Backend test failed:', err));
-    }
   }, [dispatch, user]);
 
-  // Loading spinner chỉ khi có token và đang loading
+  // Loading spinner
   if (loading && localStorage.getItem('accessToken')) {
     return (
       <div style={{ 
@@ -69,19 +75,16 @@ function App() {
     <Router>
       <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
         <Routes>
-          {/* Public Route - Auth */}
           <Route 
             path="/auth" 
             element={!isAuthenticated ? <Auth /> : <Navigate to="/dashboard" replace />} 
           />
           
-          {/* Default redirect */}
           <Route 
             path="/" 
             element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/auth" replace />} 
           />
 
-          {/* Protected Routes */}
           <Route 
             path="/dashboard" 
             element={
@@ -138,11 +141,9 @@ function App() {
             } 
           />
 
-          {/* 404 Route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
-        {/* Global Footer - Only show when authenticated */}
         {isAuthenticated && (
           <footer style={{
             backgroundColor: '#343a40',
@@ -159,16 +160,8 @@ function App() {
               flexWrap: 'wrap'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>🛠️</span>
-                <span>React + Redux + JWT</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>🔄</span>
-                <span>Redux State Management</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>🔐</span>
-                <span>Protected Routes</span>
+                <span>🌐</span>
+                <span>API: {API_URL}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>👤</span>
@@ -176,7 +169,7 @@ function App() {
               </div>
             </div>
             <p style={{ margin: '10px 0 0 0', fontSize: '0.9rem', opacity: 0.7 }}>
-              © 2024 Group1 Project - Redux State Management
+              © 2024 Group1 Project - Vercel + Render
             </p>
           </footer>
         )}
